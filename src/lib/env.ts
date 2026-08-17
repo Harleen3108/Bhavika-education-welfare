@@ -16,6 +16,10 @@ const schema = z.object({
   AUTH_SECRET: z.string().min(16, "AUTH_SECRET must be a long random string"),
   AUTH_URL: z.string().url().optional(),
 
+  // Extra secret code required (in addition to email + password) for admin sign-in.
+  // Override with a strong value in production.
+  ADMIN_ACCESS_CODE: z.string().min(4).default("BHAVIKA-ADMIN-2026"),
+
   // Public site URL (also exposed as NEXT_PUBLIC_SITE_URL)
   SITE_URL: z.string().url().optional(),
 

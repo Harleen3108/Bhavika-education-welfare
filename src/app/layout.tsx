@@ -1,19 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Poppins } from "next/font/google";
+import { Poppins } from "next/font/google";
 import { Toaster } from "sonner";
 import { SITE } from "@/lib/constants";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
-
+// Single global typeface. Only the four weights the design system uses are
+// loaded (400 body, 500 labels/nav, 600 buttons/titles, 700 hero). `swap` +
+// next/font's automatic size-adjust fallback keeps font loading CLS-safe.
 const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -73,7 +70,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${poppins.variable} h-full antialiased`}
+      className={`${poppins.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-[--color-background]">
         {children}

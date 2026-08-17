@@ -37,6 +37,27 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+/* ---- Multi-step admin login ---- */
+
+/** Step 1 — identify the admin by email. */
+export const adminLookupSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
+});
+export type AdminLookupInput = z.infer<typeof adminLookupSchema>;
+
+/** Step 2 — verify the admin's password. */
+export const adminPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
+  password: z.string().min(1, "Enter your password."),
+});
+export type AdminPasswordInput = z.infer<typeof adminPasswordSchema>;
+
+/** Step 3 — the admin access code (validated server-side against ADMIN_ACCESS_CODE). */
+export const adminCodeSchema = z.object({
+  code: z.string().trim().min(1, "Enter the admin code."),
+});
+export type AdminCodeInput = z.infer<typeof adminCodeSchema>;
+
 export const forgotPasswordSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email address."),
 });

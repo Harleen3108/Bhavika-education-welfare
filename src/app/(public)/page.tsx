@@ -96,9 +96,9 @@ export default async function HomePage() {
         >
           <Container>
             <div className="animate-fade-up mx-auto max-w-4xl">
-              <h1 className="hero-display text-3xl text-white! sm:text-5xl lg:text-6xl">
-                Empowering communities through
-                <br className="hidden sm:block" /> knowledge &amp; care.
+              <h1 className="type-h1 text-white!">
+                Empowering communities
+                <br /> through knowledge &amp; care.
               </h1>
               <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-white/80 sm:mt-7 sm:text-lg lg:text-xl">
                 {SITE.shortName} works hand in hand with communities — delivering education,
@@ -132,14 +132,24 @@ export default async function HomePage() {
       <Section className="pt-4 sm:pt-6">
         <Container>
           <div className="relative overflow-hidden rounded-[2rem] bg-night-800 px-6 py-12 sm:px-12 sm:py-16 lg:px-16 lg:py-20">
-            <div className="max-w-2xl">
+            {/* Decorative star — contained inside the card with rounded corners */}
+            <Image
+              src="/star.png"
+              alt=""
+              aria-hidden
+              width={520}
+              height={520}
+              className="pointer-events-none absolute right-6 top-1/2 hidden w-[clamp(14rem,26vw,22rem)] -translate-y-1/2 select-none rounded-3xl object-contain opacity-95 lg:right-10 lg:block"
+            />
+
+            <div className="relative max-w-2xl">
               <Badge tone="accent" className="mb-6 bg-accent-400/90 text-night-900 ring-0">
                 About {SITE.shortName}
               </Badge>
-              <h2 className="hero-display text-white! text-3xl sm:text-4xl lg:text-[2.75rem]">
+              <h2 className="type-h2 text-white!">
                 Knowledge and care, offered together, can transform lives.
               </h2>
-              <p className="mt-6 text-base leading-relaxed text-white/80 sm:text-lg">
+              <p className="type-body-lg mt-6 text-white/80">
                 {about.intro}
               </p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">

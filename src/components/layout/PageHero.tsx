@@ -26,9 +26,9 @@ export function PageHero({
             {eyebrow}
           </Badge>
         )}
-        <h1 className="mx-auto max-w-3xl text-3xl font-bold sm:text-4xl lg:text-5xl">{title}</h1>
+        <h1 className="type-h1 mx-auto max-w-3xl">{title}</h1>
         {description && (
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-ink-600 sm:text-lg">
+          <p className="type-body-lg mx-auto mt-4 max-w-2xl text-ink-600">
             {description}
           </p>
         )}

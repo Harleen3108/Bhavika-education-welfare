@@ -14,7 +14,8 @@ export default auth((req) => {
 
   const path = nextUrl.pathname;
   const isDashboard = path.startsWith("/dashboard");
-  const isAdminArea = path.startsWith("/admin");
+  // Guard the admin portal only — not sibling routes like /admin-login.
+  const isAdminArea = path === "/admin" || path.startsWith("/admin/");
 
   // Admin area: must be logged in AND admin.
   if (isAdminArea) {

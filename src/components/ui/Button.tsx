@@ -14,7 +14,7 @@ type Variant =
 type Size = "sm" | "md" | "lg" | "icon";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors " +
+  "inline-flex items-center justify-center gap-2 rounded-full font-semibold tracking-normal transition-colors " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none " +
   "disabled:opacity-60 select-none whitespace-nowrap";
 
@@ -36,7 +36,7 @@ const variants: Record<Variant, string> = {
 
 const sizes: Record<Size, string> = {
   sm: "h-9 px-4 text-sm",
-  md: "h-11 px-6 text-sm sm:text-base",
+  md: "h-11 px-6 text-[0.9375rem] sm:text-base",
   lg: "h-13 px-8 text-base",
   icon: "h-11 w-11",
 };
