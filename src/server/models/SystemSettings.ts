@@ -1,0 +1,66 @@
+import mongoose, { Schema, type Model, type Types } from "mongoose";
+
+/**
+ * Singleton settings document (single row keyed by `singleton: "global"`).
+ * Holds live business rules so admins can tune them without a redeploy.
+ * Shape mirrors DEFAULT_SETTINGS in lib/constants.
+ */
+export interface ISystemSettings {
+  _id: Types.ObjectId;
+  singleton: "global";
+  referral: {
+    referrerReward: number;
+    referredReward: number;
+    requireEmailVerification: boolean;
+    requireFirstQuiz: boolean;
+  };
+  quiz: {
+    defaultTimeLimitSeconds: number;
+    defaultMaxAttempts: number;
+    defaultPointsPerCorrect: number;
+  };
+  activity: {
+    profileCompletionPoints: number;
+  };
+  integration: {
+    redemptionEnabled: boolean;
+  };
+  updatedBy?: Types.ObjectId | null;
+  updatedAt: Date;
+  createdAt: Date;
+}
+
+const SystemSettingsSchema = new Schema<ISystemSettings>(
+  {
+    singleton: {
+      type: String,
+      enum: ["global"],
+      default: "global",
+      unique: true,
+      index: true,
+    },
+    referral: {
+      referrerReward: { type: Number, default: 50 },
+      referredReward: { type: Number, default: 0 },
+      requireEmailVerification: { type: Boolean, default: true },
+      requireFirstQuiz: { type: Boolean, default: true },
+    },
+    quiz: {
+      defaultTimeLimitSeconds: { type: Number, default: 300 },
+      defaultMaxAttempts: { type: Number, default: 1 },
+      defaultPointsPerCorrect: { type: Number, default: 10 },
+    },
+    activity: {
+      profileCompletionPoints: { type: Number, default: 20 },
+    },
+    integration: {
+      redemptionEnabled: { type: Boolean, default: false },
+    },
+    updatedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+  },
+  { timestamps: true },
+);
+
+export const SystemSettings: Model<ISystemSettings> =
+  (mongoose.models.SystemSettings as Model<ISystemSettings>) ||
+  mongoose.model<ISystemSettings>("SystemSettings", SystemSettingsSchema);
