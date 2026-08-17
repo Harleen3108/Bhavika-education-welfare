@@ -44,8 +44,8 @@ export function ContactForm() {
   if (sent) {
     return (
       <div className="flex flex-col items-center rounded-2xl border border-green-200 bg-green-50 px-6 py-12 text-center">
-        <CheckCircle2 className="text-[--color-success]" size={48} />
-        <h3 className="mt-4 text-xl font-semibold text-brand-800">Thank you!</h3>
+        <CheckCircle2 className="text-success" size={48} />
+        <h3 className="mt-4 text-xl font-semibold text-ink-900">Thank you!</h3>
         <p className="mt-2 max-w-sm text-ink-600">
           Your message has been received. Our team will get back to you soon.
         </p>

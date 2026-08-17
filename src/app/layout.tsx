@@ -1,15 +1,24 @@
 import type { Metadata, Viewport } from "next";
-import { Poppins } from "next/font/google";
+import { Poppins, Noto_Sans_Devanagari } from "next/font/google";
 import { Toaster } from "sonner";
 import { SITE } from "@/lib/constants";
 import "./globals.css";
 
-// Single global typeface. Only the four weights the design system uses are
-// loaded (400 body, 500 labels/nav, 600 buttons/titles, 700 hero). `swap` +
+// Latin typeface. Only the four weights the design system uses are loaded
+// (400 body, 500 labels/nav, 600 buttons/titles, 700 hero). `swap` +
 // next/font's automatic size-adjust fallback keeps font loading CLS-safe.
 const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+// Devanagari companion. The site is bilingual on every public surface, so
+// Hindi needs a real paired face rather than a system fallback.
+const notoDevanagari = Noto_Sans_Devanagari({
+  variable: "--font-noto-devanagari",
+  subsets: ["devanagari"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
 });
@@ -42,21 +51,21 @@ export const metadata: Metadata = {
     siteName: SITE.name,
     title: `${SITE.name} — ${SITE.tagline}`,
     description: SITE.description,
-    images: [{ url: "/logo.png", width: 512, height: 512, alt: SITE.name }],
+    images: [{ url: "/logo-lockup.png", width: 1000, height: 1000, alt: SITE.name }],
   },
   twitter: {
     card: "summary",
     title: SITE.name,
     description: SITE.description,
-    images: ["/logo.png"],
+    images: ["/logo-lockup.png"],
   },
-  icons: { icon: "/logo.png", apple: "/logo.png" },
+  icons: { icon: "/logo-mark.png", apple: "/logo-mark.png" },
   alternates: { canonical: siteUrl },
   robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1d4e89",
+  themeColor: "#f95c1b",
   width: "device-width",
   initialScale: 1,
   colorScheme: "light",
@@ -70,9 +79,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${poppins.variable} h-full antialiased`}
+      className={`${poppins.variable} ${notoDevanagari.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-[--color-background]">
+      <body className="flex min-h-full flex-col bg-background">
         {children}
         <Toaster richColors position="top-center" />
       </body>

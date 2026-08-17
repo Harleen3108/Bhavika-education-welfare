@@ -79,7 +79,7 @@ export default async function AdminWalletPage({
                       </td>
                       <td className="px-4 py-3"><Badge tone={sourceTone(t.source)}>{sourceLabel(t.source)}</Badge></td>
                       <td className="px-4 py-3 text-ink-600">{t.description}</td>
-                      <td className={cn("px-4 py-3 text-right font-semibold", positive ? "text-[--color-success]" : "text-[--color-danger]")}>{text}</td>
+                      <td className={cn("px-4 py-3 text-right font-semibold", positive ? "text-success" : "text-danger")}>{text}</td>
                       <td className="px-4 py-3 text-right text-ink-600">{t.balanceAfter}</td>
                       <td className="px-4 py-3 text-xs text-ink-400">{formatDateTime(t.createdAt)}</td>
                     </tr>

@@ -27,7 +27,13 @@ export default async function AboutPage() {
           { name: "About", path: "/about" },
         ]}
       />
-      <PageHero eyebrow="Who we are" title={about.heading} description={about.intro} />
+      <PageHero
+        eyebrow="Who we are"
+        eyebrowHi="हम कौन हैं"
+        title={about.heading}
+        titleHi="हमारी कहानी"
+        description={about.intro}
+      />
 
       <Section>
         <Container className="grid gap-10 lg:grid-cols-[1.4fr_1fr] lg:gap-14">
@@ -42,7 +48,7 @@ export default async function AboutPage() {
           <div>
             <Card>
               <CardBody>
-                <h3 className="text-lg font-semibold text-brand-800">Our objectives</h3>
+                <h3 className="text-lg font-semibold text-ink-900">Our objectives</h3>
                 <ul className="mt-4 space-y-3">
                   {about.objectives.map((o, i) => (
                     <li key={i} className="flex gap-3 text-ink-700">
@@ -68,7 +74,7 @@ export default async function AboutPage() {
             {about.areas.map((a) => (
               <Card key={a.title} interactive>
                 <CardBody>
-                  <h3 className="text-lg font-semibold text-brand-800">{a.title}</h3>
+                  <h3 className="text-lg font-semibold text-ink-900">{a.title}</h3>
                   <p className="mt-2 leading-relaxed text-ink-600">{a.body}</p>
                 </CardBody>
               </Card>

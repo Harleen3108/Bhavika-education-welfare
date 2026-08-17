@@ -78,3 +78,15 @@ export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export const resendVerificationSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email address."),
 });
+export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>;
+
+export const verifyOtpSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
+  // Codes get pasted with spaces or dashes far too often to reject over it.
+  code: z
+    .string()
+    .trim()
+    .transform((v) => v.replace(/[\s-]/g, ""))
+    .pipe(z.string().regex(/^\d{6}$/, "Enter the 6-digit code from your email.")),
+});
+export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;

@@ -134,7 +134,7 @@ export function ResourceManager<T extends Item>({
                         </button>
                         <ConfirmButton
                           onConfirm={() => remove(item.id)}
-                          className="rounded-lg p-2 text-ink-500 hover:bg-red-50 hover:text-[--color-danger]"
+                          className="rounded-lg p-2 text-ink-500 hover:bg-red-50 hover:text-danger"
                         >
                           <Trash2 size={16} />
                         </ConfirmButton>
@@ -202,7 +202,7 @@ function FieldControl({
           type="checkbox"
           checked={Boolean(value)}
           onChange={(e) => onChange(e.target.checked)}
-          className="h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
+          className="h-4 w-4 rounded border-ink-300 text-brand-700 focus:ring-brand-500"
         />
         {field.label}
       </label>

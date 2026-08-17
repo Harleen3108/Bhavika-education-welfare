@@ -3,11 +3,20 @@
 export const SITE = {
   name: "Bhavika Education & Welfare Foundation",
   shortName: "Bhavika Foundation",
-  tagline: "Empowerment Through Knowledge & Care",
+  nameHi: "भाविका एजुकेशन एंड वेलफेयर फाउंडेशन",
+  tagline: "Learn • Compete • Earn",
+  taglineHi: "सीखो • जीतो • कमाओ",
   description:
-    "Bhavika Education & Welfare Foundation empowers communities through education, welfare programs, and engagement. Join us, learn through quizzes, and grow together.",
-  // Fallback; overridden at runtime by NEXT_PUBLIC_SITE_URL when set.
-  url: "https://bhavikafoundation.org",
+    "Bhavika Education & Welfare Foundation turns everyday learning into daily quizzes, points and real rewards for children in small towns and villages. Play, climb the leaderboard, and earn discounts your family can actually use.",
+  /**
+   * The canonical public address of the site.
+   *
+   * Distinct from `env.SITE_URL`, which is whatever host the app is currently
+   * running on (localhost in development). Anything a user is expected to
+   * SHARE — a referral link above all — must use this, never the running host,
+   * or a developer's machine hands out `http://localhost:3000/register?ref=…`.
+   */
+  url: "https://bhavika-education-welfare.vercel.app",
   locale: "en_IN",
   timezone: "Asia/Kolkata",
   contact: {
@@ -24,16 +33,29 @@ export const SITE = {
   },
 } as const;
 
-/** Primary public navigation. */
+/**
+ * Primary public navigation. Ordered so the engagement platform (Quiz,
+ * Rewards, Leaderboard) sits mid-bar rather than buried — it is the reason
+ * most visitors register. Secondary pages (Mission & Vision, Videos,
+ * Testimonials, Partners) are reachable from the footer and the About page.
+ */
 export const PUBLIC_NAV = [
-  { label: "Home", href: "/" },
-  { label: "About", href: "/about" },
-  { label: "Mission & Vision", href: "/mission-vision" },
-  { label: "Gallery", href: "/gallery" },
-  { label: "Videos", href: "/videos" },
-  { label: "Testimonials", href: "/testimonials" },
-  { label: "Partners", href: "/partners" },
-  { label: "Contact", href: "/contact" },
+  { label: "Home", hi: "होम", href: "/" },
+  { label: "About", hi: "हमारे बारे में", href: "/about" },
+  { label: "Programs", hi: "कार्यक्रम", href: "/programs" },
+  { label: "Quiz", hi: "क्विज़", href: "/quiz" },
+  { label: "Rewards", hi: "इनाम", href: "/rewards" },
+  { label: "Leaderboard", hi: "लीडरबोर्ड", href: "/leaderboard" },
+  { label: "Gallery", hi: "गैलरी", href: "/gallery" },
+  { label: "Contact", hi: "संपर्क", href: "/contact" },
+] as const;
+
+/** Secondary pages — footer only. */
+export const FOOTER_NAV = [
+  { label: "Mission & Vision", hi: "लक्ष्य और दृष्टि", href: "/mission-vision" },
+  { label: "Videos", hi: "वीडियो", href: "/videos" },
+  { label: "Testimonials", hi: "लोगों की राय", href: "/testimonials" },
+  { label: "Partners", hi: "सहयोगी", href: "/partners" },
 ] as const;
 
 export const USER_NAV = [

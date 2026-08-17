@@ -1,8 +1,10 @@
 import { z } from "zod";
-import { QuizType, QuizStatus, AccountStatus, ContactStatus } from "@/lib/enums";
+import { QuizType, QuizStatus, AccountStatus, ContactStatus, TransactionType } from "@/lib/enums";
+import { passwordSchema } from "@/lib/validation/auth";
 
 const url = z.string().url("Enter a valid URL.");
 const optionalUrl = url.optional().or(z.literal(""));
+const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid id.");
 
 // ---- Simple content collections ----
 export const gallerySchema = z.object({
@@ -101,7 +103,7 @@ export const questionSchema = z
 
 // ---- Users / wallet / referrals / contacts / settings ----
 export const userStatusSchema = z.object({
-  userId: z.string().regex(/^[a-f\d]{24}$/i),
+  userId: objectId,
   status: z.enum([
     AccountStatus.ACTIVE,
     AccountStatus.PENDING,
@@ -112,10 +114,58 @@ export const userStatusSchema = z.object({
 });
 
 export const adjustmentSchema = z.object({
-  userId: z.string().regex(/^[a-f\d]{24}$/i),
+  userId: objectId,
   points: z.coerce.number().int().refine((n) => n !== 0, "Points cannot be zero.").refine((n) => Math.abs(n) <= 100000, "Too large."),
   reason: z.string().trim().min(3, "A reason is required.").max(300),
 });
+
+/**
+ * Manual wallet adjustment.
+ *
+ * `requestId` is minted by the browser once per attempt and is what makes the
+ * whole flow exactly-once: the server turns it into the ledger's unique
+ * `idempotencyKey`, so a double-click, a retry after a timeout, or a resubmitted
+ * request all carry the same key and can only ever apply one transaction.
+ * Direction is explicit rather than a signed number — "-50" typed into a field
+ * the admin thought was a credit is the kind of mistake money code must not
+ * allow.
+ */
+export const walletAdjustSchema = z.object({
+  userId: objectId,
+  direction: z.enum([TransactionType.CREDIT, TransactionType.DEBIT]),
+  points: z.coerce
+    .number()
+    .int("Points must be a whole number.")
+    .min(1, "Enter at least 1 point.")
+    .max(100000, "That is larger than any single adjustment should be."),
+  description: z
+    .string()
+    .trim()
+    .min(3, "Describe this adjustment — the member reads it in their wallet.")
+    .max(300, "Keep the description under 300 characters."),
+  requestId: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/, "Invalid request id."),
+});
+export type WalletAdjustInput = z.infer<typeof walletAdjustSchema>;
+
+/**
+ * Admin-created member. Deliberately cannot set a role: promoting someone to
+ * ADMIN is a privilege escalation and must not ride along on a "create user"
+ * form. The account is created ACTIVE and already email-verified — that is the
+ * entire point of this endpoint — so no verification mail is ever sent.
+ */
+export const adminCreateUserSchema = z.object({
+  name: z.string().trim().min(2, "Enter the member's name.").max(80),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(160),
+  password: passwordSchema,
+  referralCode: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9]{6,12}$/, "Referral codes are 6–12 letters and numbers.")
+    .optional()
+    .or(z.literal("")),
+});
+export type AdminCreateUserInput = z.infer<typeof adminCreateUserSchema>;
 
 export const contactStatusSchema = z.object({
   id: z.string().regex(/^[a-f\d]{24}$/i),

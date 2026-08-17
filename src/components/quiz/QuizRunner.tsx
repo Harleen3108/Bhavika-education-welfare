@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Clock, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
-import { Spinner } from "@/components/ui/States";
+import { Skeleton, SkeletonScreen } from "@/components/ui/Skeleton";
 import { QuizTimer } from "@/components/quiz/QuizTimer";
 import { QuizResult } from "@/components/quiz/QuizResult";
 import type { StartResult, ResultDTO } from "@/server/services/quiz.service";
@@ -94,10 +94,10 @@ export function QuizRunner({
     return (
       <Card className="mx-auto max-w-lg">
         <CardBody className="text-center sm:p-8">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
             <HelpCircle size={28} />
           </div>
-          <h2 className="text-xl font-bold text-brand-800">{meta.title}</h2>
+          <h2 className="text-xl font-bold text-ink-900">{meta.title}</h2>
           <div className="mt-4 flex justify-center gap-4 text-sm text-ink-600">
             <span>{meta.questionCount} questions</span>
             <span className="flex items-center gap-1">
@@ -132,7 +132,7 @@ export function QuizRunner({
       <div className="sticky top-16 z-20 mb-5 rounded-2xl border border-ink-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur lg:top-4">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate font-semibold text-brand-800">{data.quizTitle}</p>
+            <p className="truncate font-semibold text-ink-900">{data.quizTitle}</p>
             <p className="text-xs text-ink-500">
               {answeredCount}/{data.questions.length} answered
             </p>
@@ -173,7 +173,7 @@ export function QuizRunner({
                       className={cn(
                         "flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-colors",
                         selected
-                          ? "border-brand-500 bg-brand-50 text-brand-800"
+                          ? "border-brand-500 bg-brand-50 text-brand-700"
                           : "border-ink-200 hover:border-brand-300 hover:bg-ink-50",
                       )}
                     >
@@ -195,9 +195,9 @@ export function QuizRunner({
         ))}
       </div>
 
-      <div className="sticky bottom-0 mt-6 border-t border-ink-100 bg-[--color-background]/90 py-4 backdrop-blur">
+      <div className="sticky bottom-0 mt-6 border-t border-ink-100 bg-background/90 py-4 backdrop-blur">
         {answeredCount < data.questions.length && (
-          <p className="mb-2 text-center text-sm text-[--color-warning]">
+          <p className="mb-2 text-center text-sm text-warning">
             {data.questions.length - answeredCount} question(s) unanswered.
           </p>
         )}

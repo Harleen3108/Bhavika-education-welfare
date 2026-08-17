@@ -69,7 +69,7 @@ export default async function WalletPage({
       <Card className="mt-6">
         <CardBody>
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-semibold text-brand-800">Transaction history</h2>
+            <h2 className="text-lg font-semibold text-ink-900">Transaction history</h2>
             <div className="flex flex-wrap gap-2">
               {FILTERS.map((f) => {
                 const active = (source ?? "") === f.value;

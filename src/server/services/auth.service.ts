@@ -7,7 +7,8 @@ import { env } from "@/lib/env";
 import { SITE } from "@/lib/constants";
 import { DomainError } from "@/server/errors";
 import { hashPassword } from "@/server/auth/password";
-import { issueToken, consumeToken } from "./token.service";
+import { issueToken, consumeToken, peekToken } from "./token.service";
+import { issueOtp, activateVerifiedUser } from "./otp.service";
 import {
   sendVerificationEmail,
   sendPasswordResetEmail,
@@ -21,22 +22,61 @@ import type { RegisterInput } from "@/lib/validation/auth";
 
 const baseUrl = env.SITE_URL || SITE.url;
 
+export type RegisterResult = { userId: string; email: string; resent: boolean };
+
+/**
+ * Issue a fresh link + code pair and email them together. The user can click or
+ * type — whichever suits them — and a delivery failure is logged, never thrown,
+ * so it can't take down the registration it belongs to.
+ */
+async function sendVerificationBundle(
+  userId: Types.ObjectId | string,
+  email: string,
+  name: string,
+): Promise<void> {
+  const token = await issueToken(userId, "EMAIL_VERIFY");
+  const code = await issueOtp(userId);
+  const url = `${baseUrl}/verify-email?token=${token}`;
+  await sendVerificationEmail(email, name, url, code).catch((e) =>
+    console.error("[auth] verification email failed:", e),
+  );
+}
+
 /**
  * Register a new user. Creates the User (PENDING), their Wallet, and — if a
  * valid referral code was used — a PENDING Referral, all in one transaction.
- * Then issues + emails an email-verification link.
+ * Then issues + emails a verification link and a 6-digit code.
+ *
+ * Re-registering an address that is still PENDING is treated as "send it
+ * again", not as a conflict: the previous attempt was never verified, so
+ * rejecting it would strand the user with an account they can never activate.
+ * The resend is all it does, though — the existing account is never rewritten
+ * from an unauthenticated request. Accepting the submitted password here would
+ * let anyone who knows a pending address overwrite its credentials and hold the
+ * account the moment its real owner clicks verify. Someone who genuinely typed
+ * the wrong password on the first attempt recovers through password reset.
  */
-export async function registerUser(input: RegisterInput): Promise<{ userId: string }> {
+export async function registerUser(input: RegisterInput): Promise<RegisterResult> {
   await dbConnect();
 
   const email = input.email.toLowerCase();
-  const existing = await User.findOne({ email }).select("_id");
+  const rawCode = input.referralCode ? input.referralCode.toUpperCase() : "";
+
+  const existing = await User.findOne({ email }).select("_id name status");
   if (existing) {
-    throw new DomainError("An account with this email already exists.", 409, "EMAIL_TAKEN");
+    if (existing.status !== AccountStatus.PENDING) {
+      throw new DomainError("An account with this email already exists.", 409, "EMAIL_TAKEN");
+    }
+
+    // Name from the stored account, not from the request: the email goes to the
+    // mailbox owner, so an attacker must not get to choose what it greets them
+    // with. Referral attribution is likewise left alone — re-registering
+    // someone else's pending address must not credit the sender.
+    await sendVerificationBundle(existing._id, email, existing.name);
+    return { userId: existing._id.toString(), email, resent: true };
   }
 
-  // Validate referral code on the backend (never trust the client).
-  const rawCode = input.referralCode ? input.referralCode.toUpperCase() : "";
+  // Validate the referral code on the backend (never trust the client).
   const referrerId = rawCode ? await resolveReferrer(rawCode) : null;
 
   const referralCode = await generateUniqueReferralCode();
@@ -69,51 +109,42 @@ export async function registerUser(input: RegisterInput): Promise<{ userId: stri
   });
 
   // Fire verification email outside the transaction.
-  const token = await issueToken(userId, "EMAIL_VERIFY");
-  const url = `${baseUrl}/verify-email?token=${token}`;
-  await sendVerificationEmail(email, input.name, url).catch((e) =>
-    console.error("[auth] verification email failed:", e),
-  );
+  await sendVerificationBundle(userId, email, input.name);
 
-  return { userId };
+  return { userId, email, resent: false };
 }
 
-/** Verify an email token → activate the account. Idempotent-ish (single-use token). */
+/**
+ * Verify an email token → activate the account.
+ *
+ * Idempotent for the same link: the token is single-use, so a refresh or a
+ * second click finds it already consumed. Rather than reporting that as a
+ * failure, we confirm success when the account behind it is in fact verified.
+ */
 export async function verifyEmail(token: string): Promise<void> {
   await dbConnect();
+
   const userId = await consumeToken(token, "EMAIL_VERIFY");
-  if (!userId) {
-    throw new DomainError("This verification link is invalid or has expired.", 400, "BAD_TOKEN");
+  if (userId) {
+    await activateVerifiedUser(userId);
+    return;
   }
-  await User.updateOne(
-    { _id: userId, status: AccountStatus.PENDING },
-    { $set: { status: AccountStatus.ACTIVE, emailVerified: new Date() } },
-  );
-  // Ensure emailVerified is set even if status was already ACTIVE.
-  await User.updateOne(
-    { _id: userId, emailVerified: null },
-    { $set: { emailVerified: new Date() } },
-  );
-  // If email verification is the only remaining gate, this may complete the
-  // referral qualification. Idempotent + non-fatal.
-  try {
-    const { processReferralReward } = await import("./referral.service");
-    await processReferralReward(userId.toString());
-  } catch (e) {
-    console.error("[auth] referral qualification hook failed:", e);
+
+  const priorUserId = await peekToken(token, "EMAIL_VERIFY");
+  if (priorUserId) {
+    const user = await User.findById(priorUserId).select("emailVerified").lean();
+    if (user?.emailVerified) return;
   }
+
+  throw new DomainError("This verification link is invalid or has expired.", 400, "BAD_TOKEN");
 }
 
-/** Resend a verification email. Never reveals whether the email exists. */
+/** Resend a verification link + code. Never reveals whether the email exists. */
 export async function resendVerification(email: string): Promise<void> {
   await dbConnect();
-  const user = await User.findOne({ email: email.toLowerCase() }).select(
-    "_id name status",
-  );
+  const user = await User.findOne({ email: email.toLowerCase() }).select("_id name status");
   if (user && user.status === AccountStatus.PENDING) {
-    const token = await issueToken(user._id, "EMAIL_VERIFY");
-    const url = `${baseUrl}/verify-email?token=${token}`;
-    await sendVerificationEmail(email, user.name, url).catch(() => {});
+    await sendVerificationBundle(user._id, email.toLowerCase(), user.name);
   }
 }
 

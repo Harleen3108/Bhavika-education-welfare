@@ -22,9 +22,12 @@ export default async function ContactPage() {
   return (
     <>
       <PageHero
-        eyebrow="We'd love to hear from you"
-        title="Contact Us"
-        description="Questions, partnerships, or want to volunteer? Reach out — we're here to help."
+        eyebrow="Contact"
+        eyebrowHi="संपर्क करें"
+        title="Talk to our team"
+        titleHi="हमसे बात करें"
+        description="For admissions, partnerships, donations or press — reach us on WhatsApp for the fastest reply."
+        descriptionHi="सबसे तेज़ जवाब के लिए व्हाट्सएप पर संपर्क करें।"
       />
 
       <Section>
@@ -65,7 +68,7 @@ export default async function ContactPage() {
           {/* Form column */}
           <Card>
             <CardBody className="sm:p-8">
-              <h2 className="text-xl font-bold text-brand-800">Send us a message</h2>
+              <h2 className="text-xl font-bold text-ink-900">Send us a message</h2>
               <p className="mt-1 mb-6 text-sm text-ink-500">
                 We usually respond within 1–2 business days.
               </p>
@@ -79,7 +82,7 @@ export default async function ContactPage() {
       {info.mapEmbedUrl && (
         <Section className="pt-0">
           <Container>
-            <div className="overflow-hidden rounded-2xl border border-ink-200 shadow-[--shadow-card]">
+            <div className="overflow-hidden rounded-2xl border border-ink-200 shadow-card">
               <iframe
                 src={info.mapEmbedUrl}
                 title="Our location"
@@ -113,7 +116,7 @@ function ContactRow({
   const content = (
     <Card interactive={!!href}>
       <CardBody className="flex items-center gap-4 py-4">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
           {icon}
         </span>
         <div className="min-w-0">

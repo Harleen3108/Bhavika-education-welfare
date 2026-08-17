@@ -5,6 +5,11 @@ import { Copy, Check, Share2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 
+/** Which value is currently showing its "copied" confirmation, if any. */
+type Copied = "link" | "code" | null;
+
+const CONFIRM_MS = 2000;
+
 export function ReferralShare({
   code,
   shareLink,
@@ -14,20 +19,36 @@ export function ReferralShare({
   shareLink: string;
   perReferralPoints: number;
 }) {
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = React.useState<Copied>(null);
+  const confirmTimer = React.useRef<number | undefined>(undefined);
 
   const message = `Join me on Bhavika Foundation — learn through quizzes and support a good cause! Sign up with my link: ${shareLink}`;
 
-  const copy = async () => {
+  React.useEffect(() => () => window.clearTimeout(confirmTimer.current), []);
+
+  /**
+   * `navigator.clipboard` is absent on plain-http origins and rejects outright
+   * in some in-app browsers, so both are reported rather than swallowed — the
+   * value is on screen either way and can still be selected by hand.
+   */
+  const copy = async (what: Exclude<Copied, null>, text: string, noun: string) => {
     try {
-      await navigator.clipboard.writeText(shareLink);
-      setCopied(true);
-      toast.success("Referral link copied!");
-      setTimeout(() => setCopied(false), 2000);
+      if (!navigator.clipboard) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(text);
     } catch {
-      toast.error("Couldn't copy. Please copy it manually.");
+      toast.error(`Couldn't copy your ${noun}. Please select it and copy manually.`);
+      return;
     }
+    toast.success(`Referral ${noun} copied!`);
+    setCopied(what);
+    // Cleared and restarted so copying the code right after the link does not
+    // inherit the link's half-spent timer.
+    window.clearTimeout(confirmTimer.current);
+    confirmTimer.current = window.setTimeout(() => setCopied(null), CONFIRM_MS);
   };
+
+  const copyLink = () => void copy("link", shareLink, "link");
+  const copyCode = () => void copy("code", code, "code");
 
   const nativeShare = async () => {
     if (navigator.share) {
@@ -37,7 +58,7 @@ export function ReferralShare({
         /* user cancelled */
       }
     } else {
-      copy();
+      copyLink();
     }
   };
 
@@ -57,12 +78,13 @@ export function ReferralShare({
           <span className="truncate font-mono text-sm text-white">{shareLink}</span>
         </div>
         <Button
-          onClick={copy}
+          onClick={copyLink}
           variant="secondary"
           className="shrink-0 bg-white text-brand-700 hover:bg-white/90"
+          aria-label={copied === "link" ? "Referral link copied" : "Copy referral link"}
         >
-          {copied ? <Check size={18} /> : <Copy size={18} />}
-          {copied ? "Copied" : "Copy"}
+          {copied === "link" ? <Check size={18} aria-hidden /> : <Copy size={18} aria-hidden />}
+          {copied === "link" ? "Copied" : "Copy"}
         </Button>
       </div>
 
@@ -74,19 +96,34 @@ export function ReferralShare({
           rel="noopener noreferrer"
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
         >
-          <MessageCircle size={18} /> Share on WhatsApp
+          <MessageCircle size={18} aria-hidden /> Share on WhatsApp
         </a>
         <button
-          onClick={nativeShare}
+          type="button"
+          onClick={() => void nativeShare()}
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/30 bg-white/10 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/20"
         >
-          <Share2 size={18} /> More options
+          <Share2 size={18} aria-hidden /> More options
         </button>
       </div>
 
-      <p className="mt-4 text-center text-xs text-white/60">
-        Your code: <span className="font-mono font-bold tracking-wider text-white">{code}</span>
-      </p>
+      {/*
+        Plenty of sign-ups ask for the bare code instead of the link, and the
+        code was previously read-only text — copyable only by selecting eight
+        characters by hand, which is exactly the sort of thing people mistype.
+      */}
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-white/60">
+        <span>Your code</span>
+        <code className="font-mono text-sm font-bold tracking-wider text-white">{code}</code>
+        <button
+          type="button"
+          onClick={copyCode}
+          aria-label={copied === "code" ? "Referral code copied" : `Copy referral code ${code}`}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        >
+          {copied === "code" ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+        </button>
+      </div>
     </div>
   );
 }

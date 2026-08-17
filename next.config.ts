@@ -23,7 +23,9 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "res.cloudinary.com" },
       { protocol: "https", hostname: "img.youtube.com" },
       { protocol: "https", hostname: "i.ytimg.com" },
-      // Placeholder images used by the seed script (replace with Cloudinary in prod).
+      // Curated seed photography — see src/lib/images.ts.
+      { protocol: "https", hostname: "images.unsplash.com" },
+      // Earlier seeds pointed at picsum; kept so existing rows still render.
       { protocol: "https", hostname: "picsum.photos" },
     ],
   },

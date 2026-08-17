@@ -20,10 +20,14 @@ export const POST = handle(async (req) => {
   const body = await req.json().catch(() => ({}));
   const data = registerSchema.parse(body);
 
-  await registerUser(data);
+  const { email, resent } = await registerUser(data);
 
+  // `resent` is only present when an unverified account was re-issued a code,
+  // so the UI can say "we sent it again" instead of "welcome".
   return ok({
-    success: true,
-    message: "Account created. Please check your email to verify your account.",
+    ok: true,
+    email,
+    needsVerification: true,
+    ...(resent ? { resent: true } : {}),
   });
 });

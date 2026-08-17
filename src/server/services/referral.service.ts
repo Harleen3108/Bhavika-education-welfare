@@ -9,6 +9,7 @@ import { SITE } from "@/lib/constants";
 import { env } from "@/lib/env";
 import { getSettings } from "./content.service";
 import { creditPoints } from "./wallet.service";
+import { sendReferralJoinedEmail } from "./email.service";
 import { toDisplayName } from "@/lib/utils";
 
 // Unambiguous alphabet (no O/0/I/1) for human-shareable codes.
@@ -58,6 +59,41 @@ export async function recordReferral(
 }
 
 /**
+ * Email the referrer that their invite landed.
+ *
+ * Runs after the reward is already committed and swallows everything: a
+ * provider outage, a missing mailbox or a slow API must not turn a paid reward
+ * into a thrown error further up the verification request. `send` itself never
+ * throws, so the catch is really guarding the User lookup.
+ *
+ * Only the referred person's DISPLAY name is passed on. Their email address is
+ * never disclosed to the referrer.
+ */
+async function notifyReferrer(
+  referrerId: Types.ObjectId,
+  friendName: string,
+  points: number,
+): Promise<void> {
+  try {
+    const referrer = await User.findById(referrerId).select("name email").lean();
+    if (!referrer?.email) return;
+    // env.SITE_URL here, not SITE.url as the share link uses: this is a
+    // destination for the person receiving the mail, so in development it
+    // should point at the running host rather than at production.
+    const base = env.SITE_URL || SITE.url;
+    await sendReferralJoinedEmail(
+      referrer.email,
+      referrer.name,
+      toDisplayName(friendName),
+      points,
+      `${base}/dashboard/referrals`,
+    );
+  } catch (e) {
+    console.error("[referral] referrer notification failed:", e);
+  }
+}
+
+/**
  * Evaluate — and if eligible, pay out — the referral that invited `referredUserId`.
  * Called after the referred user verifies their email and after they complete a
  * quiz. Safe to call repeatedly: the reward is paid exactly once.
@@ -67,6 +103,8 @@ export async function recordReferral(
  *  - one referral row per referred user (unique index).
  *  - single reward via an atomic PENDING/QUALIFIED → REWARDED transition.
  *  - wallet credits are idempotency-keyed on the referral id.
+ *  - the referrer notification hangs off that same transition, so it is sent
+ *    exactly once too (see the call site).
  */
 export async function processReferralReward(
   referredUserId: string,
@@ -90,7 +128,9 @@ export async function processReferralReward(
   const settings = await getSettings();
   const rules = settings.referral;
 
-  const referred = await User.findById(referredUserId).select("status emailVerified").lean();
+  const referred = await User.findById(referredUserId)
+    .select("name status emailVerified")
+    .lean();
   if (!referred) return { rewarded: false, reason: "NO_USER" };
 
   // Eligibility rules (configurable).
@@ -153,13 +193,47 @@ export async function processReferralReward(
     });
   }
 
+  // Exactly-once for free: `transitioned` is non-null only for the one caller
+  // that won the atomic PENDING/QUALIFIED → REWARDED update, so the mail
+  // inherits the guarantee that already protects the wallet credit instead of
+  // needing a second "notified" flag that could drift out of sync with it.
+  //
+  // Deliberately hung off the reward rather than off signup: a pending referral
+  // is not yet a proven person, so anyone could otherwise fill a member's inbox
+  // by registering throwaway addresses against their code. Sending here means
+  // the referred mailbox is confirmed and there is real news to report. Last in
+  // the function, after the points are committed, so a 10s provider timeout
+  // cannot delay the credit.
+  await notifyReferrer(transitioned.referrer, referred.name, rewardPoints);
+
   return { rewarded: true };
 }
 
 // ---------- Referral overview (dashboard) ----------
+
+/**
+ * The display name of whoever invited this member, or null if they joined on
+ * their own.
+ *
+ * Name only, and a shortened one at that — "Rahul S.", the same form the
+ * referrer sees for their invitees. The referrer's email, city and everything
+ * else stays private: knowing who handed you a code is not consent to be
+ * looked up.
+ */
+export async function getReferrerName(userId: string): Promise<string | null> {
+  await dbConnect();
+  const user = await User.findById(userId)
+    .select("referrer")
+    .populate<{ referrer: { name: string } | null }>("referrer", "name")
+    .lean();
+  return user?.referrer?.name ? toDisplayName(user.referrer.name) : null;
+}
+
 export type ReferralOverview = {
   code: string;
   shareLink: string;
+  /** Display name of the member who invited this user, or null. */
+  referredBy: string | null;
   perReferralPoints: number;
   stats: { total: number; pending: number; rewarded: number; pointsEarned: number };
   referrals: {
@@ -174,10 +248,18 @@ export type ReferralOverview = {
 
 export async function getReferralOverview(userId: string): Promise<ReferralOverview> {
   await dbConnect();
-  const base = env.SITE_URL || SITE.url;
+  // The canonical public domain, deliberately NOT env.SITE_URL: this link is
+  // meant to be sent to someone else, so it must never be the running host
+  // (which is localhost in development).
+  const base = SITE.url;
 
   const [user, settings, referrals] = await Promise.all([
-    User.findById(userId).select("referralCode").lean(),
+    // Referrer folded into the query that was already fetching this user rather
+    // than a second round trip for one name.
+    User.findById(userId)
+      .select("referralCode referrer")
+      .populate<{ referrer: { name: string } | null }>("referrer", "name")
+      .lean(),
     getSettings(),
     Referral.find({ referrer: userId })
       .sort({ createdAt: -1 })
@@ -200,6 +282,7 @@ export async function getReferralOverview(userId: string): Promise<ReferralOverv
   return {
     code,
     shareLink: `${base}/register?ref=${code}`,
+    referredBy: user?.referrer?.name ? toDisplayName(user.referrer.name) : null,
     perReferralPoints: settings.referral.referrerReward,
     stats: { total: referrals.length, pending, rewarded, pointsEarned },
     referrals: referrals.map((r) => ({

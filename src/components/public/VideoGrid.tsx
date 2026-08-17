@@ -26,7 +26,7 @@ export function VideoGrid({ videos }: { videos: VideoDTO[] }) {
         {videos.map((v) => {
           const thumb = v.thumbnailUrl || toThumbnail(v.videoUrl);
           return (
-            <div key={v.id} className="overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-[--shadow-card]">
+            <div key={v.id} className="overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-card">
               <button
                 onClick={() => setPlaying(v)}
                 className="group relative block aspect-video w-full bg-ink-900"
@@ -51,7 +51,7 @@ export function VideoGrid({ videos }: { videos: VideoDTO[] }) {
                 </span>
               </button>
               <div className="p-4">
-                <h3 className="line-clamp-1 font-semibold text-brand-800">{v.title}</h3>
+                <h3 className="line-clamp-1 font-semibold text-ink-900">{v.title}</h3>
                 {v.description && (
                   <p className="mt-1 line-clamp-2 text-sm text-ink-600">{v.description}</p>
                 )}

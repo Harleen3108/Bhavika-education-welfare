@@ -57,7 +57,7 @@ export function Alert({
   className?: string;
 }) {
   const tones = {
-    info: "bg-brand-50 text-brand-800 border-brand-200",
+    info: "bg-brand-50 text-brand-700 border-brand-200",
     success: "bg-green-50 text-green-800 border-green-200",
     warning: "bg-amber-50 text-amber-900 border-amber-200",
     danger: "bg-red-50 text-red-800 border-red-200",

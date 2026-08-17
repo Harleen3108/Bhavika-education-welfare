@@ -50,7 +50,7 @@ export default async function ReferralsPage() {
 
       <Card className="mt-6">
         <CardBody>
-          <h2 className="mb-4 text-lg font-semibold text-brand-800">Your invites</h2>
+          <h2 className="mb-4 text-lg font-semibold text-ink-900">Your invites</h2>
 
           {data.referrals.length === 0 ? (
             <EmptyState

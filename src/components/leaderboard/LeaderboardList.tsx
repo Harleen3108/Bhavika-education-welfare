@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Avatar } from "@/components/ui/Avatar";
 import { cn, formatPoints } from "@/lib/utils";
 
 export type LeaderRow = {
@@ -30,15 +30,9 @@ export function LeaderboardList({ rows }: { rows: LeaderRow[] }) {
           >
             {r.rank}
           </span>
-          {r.avatarUrl ? (
-            <Image src={r.avatarUrl} alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover" />
-          ) : (
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">
-              {r.name.charAt(0).toUpperCase()}
-            </span>
-          )}
+          <Avatar src={r.avatarUrl} name={r.name} size={36} className="h-9 w-9" />
           <span className="min-w-0 flex-1 truncate font-medium text-ink-800">
-            {r.name} {r.isMe && <span className="text-xs text-brand-600">(You)</span>}
+            {r.name} {r.isMe && <span className="text-xs text-brand-700">(You)</span>}
           </span>
           <span className="shrink-0 font-semibold text-brand-700">{formatPoints(r.points)}</span>
         </li>

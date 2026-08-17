@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { Avatar } from "@/components/ui/Avatar";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -98,13 +98,7 @@ export function DashboardShell({
 
   const UserBox = (
     <div className="flex items-center gap-3 rounded-xl border border-ink-200 bg-white p-3">
-      {user.avatarUrl ? (
-        <Image src={user.avatarUrl} alt="" width={38} height={38} className="h-9 w-9 rounded-full object-cover" />
-      ) : (
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 font-semibold text-brand-700">
-          {user.name.charAt(0).toUpperCase()}
-        </span>
-      )}
+      <Avatar src={user.avatarUrl} name={user.name} size={38} className="h-9 w-9" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-ink-800">{user.name}</p>
         <p className="truncate text-xs text-ink-500">{user.email}</p>
@@ -113,7 +107,7 @@ export function DashboardShell({
   );
 
   return (
-    <div className="min-h-dvh bg-[--color-background]">
+    <div className="min-h-dvh bg-background">
       {/* Mobile top bar */}
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-ink-200 bg-white px-4 lg:hidden">
         <Logo size={36} />

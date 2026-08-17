@@ -22,7 +22,7 @@ export function TransactionList({ transactions }: { transactions: TxnRow[] }) {
             <span
               className={
                 "flex h-9 w-9 shrink-0 items-center justify-center rounded-full " +
-                (positive ? "bg-green-50 text-[--color-success]" : "bg-red-50 text-[--color-danger]")
+                (positive ? "bg-green-50 text-success" : "bg-red-50 text-danger")
               }
             >
               {positive ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
@@ -37,7 +37,7 @@ export function TransactionList({ transactions }: { transactions: TxnRow[] }) {
             <span
               className={
                 "shrink-0 font-semibold " +
-                (positive ? "text-[--color-success]" : "text-[--color-danger]")
+                (positive ? "text-success" : "text-danger")
               }
             >
               {text}

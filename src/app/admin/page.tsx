@@ -60,11 +60,11 @@ export default async function AdminDashboardPage() {
             <ul className="mt-4 space-y-3 text-sm">
               <li className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-ink-700"><Mail size={16} /> New messages</span>
-                <Link href="/admin/contacts" className="font-semibold text-brand-600">{stats.contacts.new} →</Link>
+                <Link href="/admin/contacts" className="font-semibold text-brand-700">{stats.contacts.new} →</Link>
               </li>
               <li className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-ink-700"><Users size={16} /> Pending users</span>
-                <Link href="/admin/users?status=PENDING" className="font-semibold text-brand-600">{stats.users.pending} →</Link>
+                <Link href="/admin/users?status=PENDING" className="font-semibold text-brand-700">{stats.users.pending} →</Link>
               </li>
             </ul>
           </CardBody>

@@ -1,5 +1,8 @@
 import { defineConfig } from "vitest/config";
-import path from "path";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   test: {
@@ -16,8 +19,8 @@ export default defineConfig({
   resolve: {
     alias: {
       // Neutralize the `server-only` guard in the Node test runtime.
-      "server-only": path.resolve(__dirname, "src/tests/stubs/server-only.ts"),
-      "@": path.resolve(__dirname, "src"),
+      "server-only": path.resolve(ROOT, "src/tests/stubs/server-only.ts"),
+      "@": path.resolve(ROOT, "src"),
     },
   },
 });

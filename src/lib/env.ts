@@ -29,9 +29,12 @@ const schema = z.object({
   CLOUDINARY_API_SECRET: z.string().optional(),
   CLOUDINARY_UPLOAD_FOLDER: z.string().default("bhavika"),
 
-  // Email (Resend)
+  // Email. Brevo is the active transactional provider; Resend is kept as an
+  // optional fallback so an existing deployment keeps working.
+  BREVO_API_KEY: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().default("Bhavika Foundation <noreply@bhavikafoundation.org>"),
+  EMAIL_FROM: z.string().default("noreply@alerts.avanienterprises.in"),
+  EMAIL_FROM_NAME: z.string().default("Bhavika Foundation"),
 
   // Rate limiting (Upstash) — optional; falls back to in-memory in dev
   UPSTASH_REDIS_REST_URL: z.string().optional(),
@@ -69,4 +72,11 @@ export const cloudinaryConfigured = Boolean(
   env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET,
 );
 
-export const emailConfigured = Boolean(env.RESEND_API_KEY);
+/** True when any transactional email provider is usable. */
+export const emailConfigured = Boolean(env.BREVO_API_KEY || env.RESEND_API_KEY);
+
+export const emailProvider: "brevo" | "resend" | "console" = env.BREVO_API_KEY
+  ? "brevo"
+  : env.RESEND_API_KEY
+    ? "resend"
+    : "console";

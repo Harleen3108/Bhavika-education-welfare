@@ -5,7 +5,7 @@ const controlBase =
   "w-full rounded-xl border border-ink-300 bg-white px-4 py-2.5 text-base text-ink-900 " +
   "placeholder:text-ink-400 shadow-sm transition-colors focus:border-brand-500 " +
   "focus:outline-none focus:ring-2 focus:ring-brand-200 disabled:bg-ink-100 " +
-  "aria-[invalid=true]:border-[--color-danger] aria-[invalid=true]:ring-red-100";
+  "aria-[invalid=true]:border-danger aria-[invalid=true]:ring-red-100";
 
 export const Input = React.forwardRef<
   HTMLInputElement,
@@ -42,7 +42,7 @@ export function Label({
   return (
     <label className={cn("mb-1.5 block text-sm font-medium text-ink-800", className)} {...props}>
       {children}
-      {required && <span className="ml-0.5 text-[--color-danger]">*</span>}
+      {required && <span className="ml-0.5 text-danger">*</span>}
     </label>
   );
 }
@@ -50,7 +50,7 @@ export function Label({
 export function FieldError({ children }: { children?: React.ReactNode }) {
   if (!children) return null;
   return (
-    <p className="mt-1.5 text-sm text-[--color-danger]" role="alert">
+    <p className="mt-1.5 text-sm text-danger" role="alert">
       {children}
     </p>
   );

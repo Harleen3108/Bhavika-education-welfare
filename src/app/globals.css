@@ -2,89 +2,109 @@
 
 /*
   Bhavika Education & Welfare Foundation — Design System
-  Derived from the foundation logo:
-    - Navy / royal blue  (open book + wordmark)   -> brand (primary)
-    - Leaf green         (dove, rising figure)     -> accent (secondary)
-    - Warm neutral grey  (emblem background)       -> surface / neutral
-  Personality: professional, trustworthy, warm, community-focused.
+  Warm, energetic palette built for a children's learning platform:
+    - Coral / orange  (primary action, energy, warmth)   -> brand
+    - Deep ink navy   (headings, body, trust)            -> ink
+    - Teal green      (positive outcomes, "solution")    -> accent
+    - Cream           (page ground, warmth without glare)-> background
+  Personality: warm, optimistic, credible. Bilingual (English + हिन्दी) throughout.
+
+  NOTE: `brand-*` is now the coral ramp. Any component that used `brand-*` for a
+  navy heading colour should use `ink-*` instead — headings default to ink-900.
 */
 
 @theme {
-  /* ---- Brand: Navy blue ---- */
-  --color-brand-50: #eef4fb;
-  --color-brand-100: #d5e3f4;
-  --color-brand-200: #adc7e8;
-  --color-brand-300: #7ba3d6;
-  --color-brand-400: #4a7cbf;
-  --color-brand-500: #2b5fa3;
-  --color-brand-600: #1d4e89; /* primary */
-  --color-brand-700: #163d6c;
-  --color-brand-800: #112f52;
-  --color-brand-900: #0d2440;
-  --color-brand-950: #081627;
+  /* ---- Brand: Coral / orange (primary) ---- */
+  --color-brand-50: #fff5ed;
+  --color-brand-100: #ffe8d5;
+  --color-brand-200: #fecdaa;
+  --color-brand-300: #fdaa74;
+  --color-brand-400: #fb7c3c;
+  --color-brand-500: #f95c1b; /* primary */
+  --color-brand-600: #ea4211;
+  --color-brand-700: #c22f10;
+  --color-brand-800: #9a2815;
+  --color-brand-900: #7c2414;
+  --color-brand-950: #430e07;
 
-  /* ---- Accent: Leaf green ---- */
-  --color-accent-50: #f2f9ea;
-  --color-accent-100: #e0f0cf;
-  --color-accent-200: #c4e2a3;
-  --color-accent-300: #a3d071;
-  --color-accent-400: #82bd47;
-  --color-accent-500: #63a52f; /* secondary */
-  --color-accent-600: #4d8a22;
-  --color-accent-700: #3c6c1d;
-  --color-accent-800: #31561c;
-  --color-accent-900: #2a481b;
-  --color-accent-950: #13270a;
+  /* ---- Amber: the warm half of the signature gradient ----
+     The 700 step exists so the CTA gradient can carry white text at AA. */
+  --color-amber-glow-300: #fcd34d;
+  --color-amber-glow-400: #fbbf24;
+  --color-amber-glow-500: #f59e0b;
+  --color-amber-glow-600: #d97706;
+  --color-amber-glow-700: #b45309; /* white text: 5.02:1 */
 
-  /* ---- Night: dark slate-navy hero / nav surface (reference theme) ---- */
-  --color-night-600: #3d5f70;
-  --color-night-700: #35576a;
-  --color-night-800: #2e4b5c; /* primary hero + navbar surface */
-  --color-night-900: #253c49;
-  --color-night-950: #1c2e38;
+  /* ---- Rose: the cool half of the signature gradient (Hindi text, accents) ---- */
+  --color-rose-glow-400: #fb7185;
+  --color-rose-glow-500: #f43f5e;
+  --color-rose-glow-600: #e11d48;
+  --color-rose-glow-700: #be123c; /* white text: 6.29:1 */
 
-  /* ---- CTA: warm orange (Donate / primary action pill) ---- */
-  --color-cta-300: #fbcd7d;
-  --color-cta-400: #f8b74f;
-  --color-cta-500: #f5a623; /* main */
-  --color-cta-600: #e6941a;
-  --color-cta-700: #c47a14;
+  /* ---- Accent: Teal green (positive outcomes, "our solution") ---- */
+  --color-accent-50: #effcf7;
+  --color-accent-100: #d5f6e9;
+  --color-accent-200: #aeecd8;
+  --color-accent-300: #79dcc1;
+  --color-accent-400: #43c4a5;
+  --color-accent-500: #1faa8c; /* secondary */
+  --color-accent-600: #138872;
+  --color-accent-700: #126d5d;
+  --color-accent-800: #13574c;
+  --color-accent-900: #134840;
+  --color-accent-950: #042a26;
 
-  /* ---- Neutrals (warm slate) ---- */
-  --color-ink-50: #f7f8fa;
-  --color-ink-100: #eef0f4;
-  --color-ink-200: #dde1e9;
-  --color-ink-300: #c3cad6;
-  --color-ink-400: #9aa4b6;
-  --color-ink-500: #707c92;
-  --color-ink-600: #566074;
-  --color-ink-700: #454d5e;
-  --color-ink-800: #2f3543;
-  --color-ink-900: #1d222c;
+  /* ---- Night: deep ink surfaces (footer, dark bands) ---- */
+  --color-night-600: #3b4256;
+  --color-night-700: #2d3347;
+  --color-night-800: #232838;
+  --color-night-900: #191d29;
+  --color-night-950: #10131b;
+
+  /* ---- CTA: alias of the brand ramp so existing `cta` variants stay warm ---- */
+  --color-cta-300: #fdaa74;
+  --color-cta-400: #fb7c3c;
+  --color-cta-500: #f95c1b;
+  --color-cta-600: #ea4211;
+  --color-cta-700: #c22f10;
+
+  /* ---- Neutrals (warm-tinted, so they sit on cream without going grey) ---- */
+  --color-ink-50: #fdf9f6;
+  --color-ink-100: #f6f0ea;
+  --color-ink-200: #eae1d8;
+  --color-ink-300: #d6c9bd;
+  --color-ink-400: #a99c91;
+  --color-ink-500: #7c7169;
+  --color-ink-600: #5c534d;
+  --color-ink-700: #443d39;
+  --color-ink-800: #2a2522;
+  --color-ink-900: #1a1614;
 
   /* ---- Semantic ---- */
-  --color-success: #3c9a2f;
-  --color-warning: #d98a1f;
-  --color-danger: #c73a3a;
-  --color-info: #2b6cb0;
+  --color-success: #138872;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+  --color-info: #2563eb;
 
   /* ---- Surfaces / text (light) ---- */
-  --color-background: #f7f8fa;
+  --color-background: #fffaf5; /* warm cream */
   --color-surface: #ffffff;
-  --color-foreground: #1d222c;
-  --color-muted: #566074;
-  --color-border: #dde1e9;
+  --color-foreground: #1a1614;
+  --color-muted: #5c534d;
+  --color-border: #eae1d8;
 
-  /* ---- Fonts: Poppins is the single global typeface ---- */
+  /* ---- Fonts ---- */
   --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  /* Devanagari — paired so Hindi never falls back to a mismatched system face */
+  --font-hindi: var(--font-noto-devanagari), var(--font-poppins), sans-serif;
 
   /* ---- Radii ---- */
   --radius-card: 1rem;
 
-  /* ---- Shadows (soft, premium) ---- */
-  --shadow-card: 0 1px 2px rgb(13 36 64 / 0.04), 0 4px 16px rgb(13 36 64 / 0.06);
-  --shadow-card-hover: 0 2px 4px rgb(13 36 64 / 0.06), 0 12px 32px rgb(13 36 64 / 0.10);
+  /* ---- Shadows (soft, warm-tinted) ---- */
+  --shadow-card: 0 1px 2px rgb(67 14 7 / 0.04), 0 4px 16px rgb(67 14 7 / 0.06);
+  --shadow-card-hover: 0 2px 4px rgb(67 14 7 / 0.06), 0 12px 32px rgb(67 14 7 / 0.12);
 
   /* ---- Container ---- */
   --breakpoint-xs: 22rem;
@@ -118,15 +138,16 @@ body {
 /*
   Base heading defaults — kept in @layer base so the type-* scale utilities
   (in the utilities layer) reliably override weight/size/line-height when applied.
-  Colours are intentionally left as brand-800 to preserve existing branding.
+  Headings are ink (near-black), NOT brand: the coral ramp is reserved for
+  actions and emphasis spans, so a page of headings never reads as all-orange.
 */
 @layer base {
   h1, h2, h3, h4 {
     font-family: var(--font-display);
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1.15;
-    letter-spacing: -0.01em;
-    color: var(--color-brand-800);
+    letter-spacing: -0.02em;
+    color: var(--color-ink-900);
     text-wrap: balance;
   }
 }
@@ -143,6 +164,10 @@ body {
   html { scroll-behavior: auto; }
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
+    /* Without this, an `infinite` animation (marquee, pulse, spin) keeps
+       looping at ~0ms and strobes once per frame — far worse than the motion
+       it was meant to suppress. Collapsing to a single iteration stops it. */
+    animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
 }
@@ -229,11 +254,95 @@ body {
   letter-spacing: 0;
 }
 
+/* -------------------------------------------------------------------------
+   Bilingual (English + हिन्दी) type. Every public surface pairs an English
+   line with its Hindi counterpart. Hindi is set in Noto Sans Devanagari at a
+   slightly smaller optical size — Devanagari runs visually larger than Latin
+   at the same px, so 0.92em keeps the pair balanced on a shared baseline.
+   ------------------------------------------------------------------------- */
+
+@utility font-hindi {
+  font-family: var(--font-hindi);
+}
+
+/* Hindi subtitle under an English heading */
+@utility type-hi {
+  font-family: var(--font-hindi);
+  font-size: 0.92em;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+/*
+  Hindi shown inline beside English (nav items, labels, stat captions).
+
+  De-emphasis comes from size alone, never from opacity: fading this to 0.75
+  dropped it to 2.90:1 over ink-500 — the smallest and lowest-contrast text on
+  the page, on the Hindi half of a site whose audience is bilingual. Size
+  already reads as secondary; the alpha only made it unreadable.
+*/
+@utility type-hi-inline {
+  font-family: var(--font-hindi);
+  font-size: 0.85em;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+/* -------------------------------------------------------------------------
+   Brand gradient — the signature amber→coral→rose sweep used on the logo
+   tile, primary CTAs, section rules and emphasis spans.
+   ------------------------------------------------------------------------- */
+
+/*
+  Two brand gradients, split by whether the surface carries text.
+
+  `bg-gradient-brand` is the bright, logo-matching sweep. Its amber stop is far
+  too light to sit under white text (2.15:1 — it fails WCAG AA at every size),
+  so it is for DECORATIVE fills only: ornamental rules, the scroll-progress bar,
+  glow layers, chips whose icon is aria-hidden and labelled by adjacent text.
+*/
+@utility bg-gradient-brand {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-amber-glow-500) 0%,
+    var(--color-brand-500) 55%,
+    var(--color-rose-glow-500) 100%
+  );
+}
+
+/*
+  `bg-gradient-cta` is the same gold→coral→rose journey a few steps deeper, so
+  white text clears AA on every stop (worst case 5.02:1 on the gold end).
+  Use this for every button, badge or band that renders text on the gradient.
+*/
+@utility bg-gradient-cta {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-amber-glow-700) 0%,
+    var(--color-brand-700) 55%,
+    var(--color-rose-glow-700) 100%
+  );
+}
+
 @utility text-gradient-brand {
-  background-image: linear-gradient(120deg, var(--color-brand-600), var(--color-accent-600));
+  background-image: linear-gradient(
+    100deg,
+    var(--color-amber-glow-600) 0%,
+    var(--color-brand-600) 55%,
+    var(--color-rose-glow-600) 100%
+  );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* Soft radial wash used behind heroes and feature bands */
+@utility bg-warm-glow {
+  background-image:
+    radial-gradient(60rem 40rem at 15% -10%, var(--color-brand-100) 0%, transparent 60%),
+    radial-gradient(50rem 35rem at 95% 5%, #ffe4e6 0%, transparent 55%);
 }
 
 @utility animate-fade-up {
@@ -243,4 +352,18 @@ body {
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Continuous marquee for the partner strip. Stopped for reduced-motion users by
+   the global rule above, which collapses duration *and* iteration count. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  /* -100% of *this* strip's own width: the class sits on each duplicated <ul>,
+     so at the end of the cycle copy 2 lands exactly where copy 1 started. A
+     -50% shift would leave half a strip of empty space and visibly snap. */
+  to { transform: translateX(-100%); }
+}
+
+@utility animate-marquee {
+  animation: marquee 38s linear infinite;
 }

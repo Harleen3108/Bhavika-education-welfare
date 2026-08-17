@@ -21,8 +21,11 @@ export default async function VideosPage() {
     <>
       <PageHero
         eyebrow="Watch & learn"
+        eyebrowHi="देखें और जानें"
         title="Videos"
+        titleHi="वीडियो"
         description="Stories and highlights from our programs, straight from the communities we serve."
+        descriptionHi="हमारे कार्यक्रमों की कहानियाँ, सीधे समुदाय से।"
       />
       <Section>
         <Container>

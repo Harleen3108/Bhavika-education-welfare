@@ -36,11 +36,11 @@ export function BenefitsCTA({ state }: { state: RedemptionState }) {
 
   if (!state.enabled) {
     return (
-      <div className="rounded-2xl border border-ink-200 bg-white p-8 text-center shadow-[--shadow-card]">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+      <div className="rounded-2xl border border-ink-200 bg-white p-8 text-center shadow-card">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
           <Lock size={30} />
         </div>
-        <h2 className="text-xl font-bold text-brand-800">Benefits are coming soon</h2>
+        <h2 className="text-xl font-bold text-ink-900">Benefits are coming soon</h2>
         <p className="mx-auto mt-2 max-w-md text-ink-600">
           Soon you&apos;ll be able to use your points for eligible benefits through our partner
           platform, <strong>Jai Maa Durga</strong>. Keep earning — your{" "}
@@ -54,7 +54,7 @@ export function BenefitsCTA({ state }: { state: RedemptionState }) {
   }
 
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-brand-700 to-brand-800 p-8 text-white shadow-[--shadow-card]">
+    <div className="rounded-2xl bg-gradient-to-br from-brand-700 to-brand-800 p-8 text-white shadow-card">
       <Gift size={32} className="text-accent-400" />
       <h2 className="mt-3 text-xl font-bold text-white">Use your benefits</h2>
       <p className="mt-1 text-white/70">

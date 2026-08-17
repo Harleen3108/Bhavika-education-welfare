@@ -9,9 +9,9 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-ink-200 bg-[--color-surface] shadow-[--shadow-card]",
+        "rounded-2xl border border-ink-200 bg-surface shadow-card",
         interactive &&
-          "transition-shadow hover:shadow-[--shadow-card-hover] focus-within:shadow-[--shadow-card-hover]",
+          "transition-shadow hover:shadow-card-hover focus-within:shadow-card-hover",
         className,
       )}
       {...props}
@@ -24,5 +24,5 @@ export function CardBody({ className, ...props }: React.HTMLAttributes<HTMLDivEl
 }
 
 export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 className={cn("text-lg font-semibold text-brand-800", className)} {...props} />;
+  return <h3 className={cn("text-lg font-semibold text-ink-900", className)} {...props} />;
 }

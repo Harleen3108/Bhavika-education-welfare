@@ -70,7 +70,7 @@ export default async function LeaderboardPage({
               </span>
               <div>
                 <p className="text-sm text-ink-600">Your rank</p>
-                <p className="font-display text-xl font-bold text-brand-800">
+                <p className="font-display text-xl font-bold text-ink-900">
                   {board.me.rank ? `#${board.me.rank}` : "Unranked"}
                 </p>
               </div>

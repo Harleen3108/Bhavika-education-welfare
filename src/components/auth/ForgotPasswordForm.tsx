@@ -43,12 +43,12 @@ export function ForgotPasswordForm() {
   if (done) {
     return (
       <div className="flex flex-col items-center rounded-xl border border-green-200 bg-green-50 px-6 py-10 text-center">
-        <MailCheck className="text-[--color-success]" size={44} />
-        <h3 className="mt-4 text-lg font-semibold text-brand-800">Check your email</h3>
+        <MailCheck className="text-success" size={44} />
+        <h3 className="mt-4 text-lg font-semibold text-ink-900">Check your email</h3>
         <p className="mt-2 text-sm text-ink-600">
           If an account exists for that address, we&apos;ve sent a password reset link.
         </p>
-        <a href="/login" className="mt-5 text-sm font-semibold text-brand-600 hover:text-brand-700">
+        <a href="/login" className="mt-5 text-sm font-semibold text-brand-700 hover:text-brand-700">
           Back to login →
         </a>
       </div>

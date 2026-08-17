@@ -17,7 +17,7 @@ export function StatCard({
   isPoints?: boolean;
 }) {
   const tones = {
-    brand: "bg-brand-50 text-brand-600",
+    brand: "bg-brand-50 text-brand-700",
     accent: "bg-accent-50 text-accent-600",
     neutral: "bg-ink-100 text-ink-600",
   };
@@ -31,7 +31,7 @@ export function StatCard({
         )}
         <div className="min-w-0">
           <p className="text-sm text-ink-500">{label}</p>
-          <p className="font-display text-2xl font-bold text-brand-800">
+          <p className="font-display text-2xl font-bold text-ink-900">
             {isPoints && typeof value === "number" ? formatPoints(value) : value}
           </p>
         </div>

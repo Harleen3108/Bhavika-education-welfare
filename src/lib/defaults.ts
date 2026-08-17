@@ -4,6 +4,8 @@
  * static generation. Admins overwrite these via /admin/content.
  */
 
+import { FAQS, FOUNDER, IMPACT, PILLARS, PROGRAMS } from "@/lib/site-content";
+
 export type AboutContent = {
   heading: string;
   intro: string;
@@ -87,10 +89,111 @@ export const DEFAULT_CONTACT: ContactInfo = {
   hours: "Mon – Sat, 10:00 AM – 6:00 PM IST",
 };
 
+/* ------------------------------------------------------ Homepage sections */
+
+/**
+ * The homepage sections below are stored as Content blocks and fall back to the
+ * marketing copy in `site-content` until an admin saves an override — a fresh
+ * deployment renders a complete page with an empty database.
+ */
+
+/** A live counter that can stand in for an editorial impact figure. */
+export type ImpactSource =
+  | "users"
+  | "quizzes"
+  | "quizAttempts"
+  | "gallery"
+  | "partners"
+  | "testimonials";
+
+export type ImpactStat = {
+  key: string;
+  /** Editorial figure, shown until the live counter reports something. */
+  value: string;
+  label: string;
+  labelHi: string;
+  /** Live counter that replaces `value` once it is non-zero. */
+  source: ImpactSource | null;
+};
+
+export type HomeImpactContent = { stats: ImpactStat[] };
+
+export type ProgramItem = {
+  key: string;
+  icon: string;
+  title: string;
+  titleHi: string;
+  body: string;
+  stat: string;
+  statHi: string;
+};
+
+export type HomeProgramsContent = { items: ProgramItem[] };
+
+export type PillarItem = { icon: string; title: string; titleHi: string; body: string };
+
+export type HomePillarsContent = { items: PillarItem[] };
+
+export type FaqItem = { q: string; qHi: string; a: string; aHi?: string };
+
+export type HomeFaqContent = { items: FaqItem[] };
+
+export type FounderContent = {
+  quote: string;
+  quoteHi: string;
+  role: string;
+  roleHi: string;
+  name?: string;
+  imageUrl?: string;
+};
+
+/**
+ * Which live counter backs each impact figure, keyed by its English label.
+ * Only mappings where the counter genuinely measures what the label claims are
+ * listed; everything else stays editorial. An admin can repoint any stat by
+ * editing the stored block.
+ */
+const IMPACT_SOURCES: Record<string, ImpactSource> = {
+  "Students reached": "users",
+  // "Schools partnered" is deliberately NOT backed by the `partners` counter:
+  // the Partner collection holds every kind of collaborator — a retail store, a
+  // health centre, a nursery, a self-help group — so publishing its size as a
+  // count of schools states something the data does not say.
+};
+
+export const DEFAULT_HOME_IMPACT: HomeImpactContent = {
+  stats: IMPACT.map((s) => ({
+    key: s.label.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    value: s.value,
+    label: s.label,
+    labelHi: s.labelHi,
+    source: IMPACT_SOURCES[s.label] ?? null,
+  })),
+};
+
+export const DEFAULT_HOME_PROGRAMS: HomeProgramsContent = {
+  items: PROGRAMS.map((p) => ({ ...p })),
+};
+
+export const DEFAULT_HOME_PILLARS: HomePillarsContent = {
+  items: PILLARS.map((p) => ({ ...p })),
+};
+
+export const DEFAULT_HOME_FAQ: HomeFaqContent = {
+  items: FAQS.map((f) => ({ ...f })),
+};
+
+export const DEFAULT_HOME_FOUNDER: FounderContent = { ...FOUNDER };
+
 /** Content keys used in the Content collection. */
 export const CONTENT_KEYS = {
   about: "about",
   missionVision: "mission-vision",
   contactInfo: "contact-info",
   homeHero: "home-hero",
+  homeImpact: "home-impact",
+  homePrograms: "home-programs",
+  homePillars: "home-pillars",
+  homeFaq: "home-faq",
+  homeFounder: "home-founder",
 } as const;

@@ -1,17 +1,28 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, LogIn, ShieldCheck } from "lucide-react";
 import { loginSchema, type LoginInput } from "@/lib/validation/auth";
+import { AccountStatus } from "@/lib/enums";
 import { Button } from "@/components/ui/Button";
-import { Input, FormField } from "@/components/ui/Field";
+import { Input } from "@/components/ui/Field";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Alert } from "@/components/ui/States";
+import { Hi } from "@/components/ui/Bilingual";
+import { AuthField } from "./AuthCard";
+
+type LoginError = {
+  en: string;
+  hi: string;
+  /** When set, the alert offers a way to finish verifying this address. */
+  verifyFor?: string;
+};
 
 async function postJson(url: string, body: unknown) {
   const res = await fetch(url, {
@@ -26,7 +37,9 @@ export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const callbackUrl = params.get("callbackUrl") || "/dashboard";
-  const [formError, setFormError] = React.useState<string | null>(null);
+  const justVerified = params.get("verified") === "1";
+
+  const [formError, setFormError] = React.useState<LoginError | null>(null);
 
   // When the entered email belongs to an admin (and the password checks out),
   // we stay on this same page and reveal an extra "admin code" step.
@@ -63,7 +76,10 @@ export function LoginForm() {
         password: values.password,
       });
       if (!pw.ok) {
-        setFormError("Invalid email or password.");
+        setFormError({
+          en: "Invalid email or password.",
+          hi: "ईमेल या पासवर्ड ग़लत है।",
+        });
         return;
       }
       setCreds(values);
@@ -77,12 +93,37 @@ export function LoginForm() {
       password: values.password,
       redirect: false,
     });
+
     if (res?.error) {
+      // A rejected password comes back as a plain credentials error; anything
+      // else means authorize threw, which here is a blocked or suspended
+      // account (or, rarely, the database being unreachable).
+      const rejected = res.error === "CredentialsSignin";
       setFormError(
-        "Invalid email or password. If your account is new, please verify your email; if it's restricted, contact us.",
+        !rejected
+          ? {
+              en: "We couldn't sign you in. This account may be restricted — please contact us if it keeps happening.",
+              hi: "हम आपको लॉग इन नहीं कर पाए। संभव है यह खाता प्रतिबंधित हो — दिक़्क़त बनी रहे तो हमसे संपर्क करें।",
+            }
+          : {
+              en: "Invalid email or password.",
+              hi: "ईमेल या पासवर्ड ग़लत है।",
+              verifyFor: values.email,
+            },
       );
       return;
     }
+
+    // Signed in, but the mailbox was never confirmed — send them straight to
+    // the code screen instead of a dashboard full of locked features.
+    const session = await getSession();
+    if (session?.user?.status === AccountStatus.PENDING) {
+      toast.info("Almost there — verify your email to unlock quizzes.");
+      router.push(`/verify-email?email=${encodeURIComponent(values.email)}`);
+      router.refresh();
+      return;
+    }
+
     finishLogin(false);
   };
 
@@ -100,30 +141,52 @@ export function LoginForm() {
     });
     setVerifyingCode(false);
     if (res?.error) {
-      setFormError("Admin code is wrong.");
+      setFormError({ en: "That admin code is wrong.", hi: "एडमिन कोड ग़लत है।" });
       return;
     }
     finishLogin(true);
   };
 
+  const errorAlert = formError && (
+    <Alert tone="danger">
+      {formError.en}
+      <Hi className="mt-1 block">{formError.hi}</Hi>
+      {formError.verifyFor && (
+        <Link
+          href={`/verify-email?email=${encodeURIComponent(formError.verifyFor)}`}
+          className="mt-2 inline-flex items-center gap-1 font-semibold underline"
+        >
+          Registered but never verified? Enter your code
+          <Hi inline>कोड डालें</Hi>
+          <ArrowRight size={15} />
+        </Link>
+      )}
+    </Alert>
+  );
+
   // ---- Admin code step ----
   if (creds) {
     return (
       <form onSubmit={onSubmitCode} className="space-y-5" noValidate>
-        <div className="flex items-center gap-2 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-700">
-          <ShieldCheck size={18} className="shrink-0" />
+        <div className="flex items-start gap-2 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-700">
+          <ShieldCheck size={18} className="mt-0.5 shrink-0" />
           <span>
             Admin account detected. Enter your admin access code to continue.
+            <Hi className="mt-0.5 block">
+              एडमिन खाता मिला। आगे बढ़ने के लिए एडमिन कोड भरें।
+            </Hi>
           </span>
         </div>
 
-        {formError && <Alert tone="danger">{formError}</Alert>}
+        {errorAlert}
 
-        <FormField
+        <AuthField
           label="Admin access code"
+          labelHi="एडमिन कोड"
           htmlFor="adminCode"
           required
           hint="The secret code issued to administrators."
+          hintHi="प्रशासकों को दिया गया गुप्त कोड।"
         >
           <Input
             id="adminCode"
@@ -133,9 +196,14 @@ export function LoginForm() {
             value={adminCode}
             onChange={(e) => setAdminCode(e.target.value)}
           />
-        </FormField>
+        </AuthField>
 
-        <div className="flex gap-3">
+        {/* Side by side the two pills need 343px, which the 280px card at 360px
+            cannot give them — and neither can shrink, since Button is
+            `whitespace-nowrap`. Stack them until there is room. `sm:flex-1`
+            rather than `flex-1`: in column direction flex-basis would override
+            the button's own height and collapse it. */}
+        <div className="flex flex-col gap-3 sm:flex-row">
           <Button
             type="button"
             variant="subtle"
@@ -147,7 +215,7 @@ export function LoginForm() {
           >
             <ArrowLeft size={18} /> Back
           </Button>
-          <Button type="submit" size="lg" loading={verifyingCode} className="flex-1">
+          <Button type="submit" size="lg" loading={verifyingCode} className="sm:flex-1">
             <ShieldCheck size={18} /> Access portal
           </Button>
         </div>
@@ -158,9 +226,24 @@ export function LoginForm() {
   // ---- Email + password step (everyone) ----
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-      {formError && <Alert tone="danger">{formError}</Alert>}
+      {justVerified && !formError && (
+        <Alert tone="success">
+          Your email is verified. Log in to start earning points.
+          <Hi className="mt-1 block">
+            आपका ईमेल सत्यापित हो गया। पॉइंट्स कमाना शुरू करने के लिए लॉग इन करें।
+          </Hi>
+        </Alert>
+      )}
 
-      <FormField label="Email" htmlFor="email" required error={errors.email?.message}>
+      {errorAlert}
+
+      <AuthField
+        label="Email"
+        labelHi="ईमेल"
+        htmlFor="email"
+        required
+        error={errors.email?.message}
+      >
         <Input
           id="email"
           type="email"
@@ -168,31 +251,51 @@ export function LoginForm() {
           aria-invalid={!!errors.email}
           {...register("email")}
         />
-      </FormField>
+      </AuthField>
 
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label htmlFor="password" className="text-sm font-medium text-ink-800">
-            Password <span className="text-[--color-danger]">*</span>
-          </label>
-          <a href="/forgot-password" className="text-sm font-medium text-brand-600 hover:text-brand-700">
+      <AuthField
+        label="Password"
+        labelHi="पासवर्ड"
+        htmlFor="password"
+        required
+        error={errors.password?.message}
+        action={
+          <Link
+            href="/forgot-password"
+            className="shrink-0 text-sm font-medium text-brand-700 hover:text-brand-700"
+          >
             Forgot?
-          </a>
-        </div>
+          </Link>
+        }
+      >
         <PasswordInput
           id="password"
           autoComplete="current-password"
           aria-invalid={!!errors.password}
           {...register("password")}
         />
-        {errors.password && (
-          <p className="mt-1.5 text-sm text-[--color-danger]">{errors.password.message}</p>
-        )}
-      </div>
+      </AuthField>
 
-      <Button type="submit" size="lg" loading={isSubmitting} className="w-full">
+      <Button
+        type="submit"
+        variant="gradient"
+        size="lg"
+        loading={isSubmitting}
+        className="w-full"
+      >
+        {!isSubmitting && <LogIn size={18} />}
         Log in
+        <Hi inline>लॉग इन करें</Hi>
       </Button>
+
+      <p className="text-center text-sm text-ink-600">
+        <Link href="/verify-email" className="font-medium text-brand-700 hover:text-brand-700">
+          Need to verify your email?
+        </Link>
+        <Hi inline className="ml-1.5 text-ink-500">
+          ईमेल सत्यापित करना है?
+        </Hi>
+      </p>
     </form>
   );
 }

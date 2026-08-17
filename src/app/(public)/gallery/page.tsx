@@ -21,8 +21,11 @@ export default async function GalleryPage() {
     <>
       <PageHero
         eyebrow="Our work in pictures"
-        title="Gallery"
-        description="A glimpse into the programs, events and everyday moments that define our work."
+        eyebrowHi="तस्वीरों में हमारा काम"
+        title="Moments from the ground"
+        titleHi="मैदान से कुछ पल"
+        description="Classrooms, camps, distribution drives and celebrations — a glimpse into the everyday moments that define our work."
+        descriptionHi="कक्षाएँ, शिविर, वितरण और उत्सव।"
       />
       <Section>
         <Container>

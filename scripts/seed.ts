@@ -24,6 +24,7 @@ import { ActivityReward } from "../src/server/models/ActivityReward";
 import { Quiz } from "../src/server/models/Quiz";
 import { UserRole, AccountStatus, QuizType, QuizStatus } from "../src/lib/enums";
 import { CONTENT_KEYS, DEFAULT_ABOUT, DEFAULT_MISSION_VISION, DEFAULT_CONTACT } from "../src/lib/defaults";
+import { GALLERY_IMAGES, TESTIMONIAL_AVATARS } from "../src/lib/images";
 
 const genCode = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 8);
 
@@ -81,10 +82,57 @@ async function main() {
   console.log("✓ CMS content seeded");
 
   // ---- Testimonials ----
+  // Each quote carries its Hindi line inline: the card renders `message` as a
+  // single paragraph, so a newline would collapse and the Hindi would vanish.
   const testimonials = [
-    { name: "Anita Sharma", role: "Parent, Learning Centre", message: "The foundation gave my daughter a chance to learn that we could never have afforded. She now dreams of becoming a teacher.", order: 1 },
-    { name: "Ravi Kumar", role: "Volunteer", message: "Volunteering here changed how I see my community. Every session reminds me that small efforts add up to real change.", order: 2 },
-    { name: "Priya Nair", role: "Scholarship Student", message: "Thanks to the scholarship and mentorship, I completed my studies and got my first job. I'm forever grateful.", order: 3 },
+    {
+      name: "Sunita Devi",
+      role: "Parent, Kanpur Dehat learning centre",
+      message:
+        "My daughter used to spend the whole day helping me in the field. Now she finishes her homework before I am back from work, and she teaches her younger brother too. बेटी को पढ़ते हुए देखना मेरे लिए सबसे बड़ी खुशी है।",
+      imageUrl: TESTIMONIAL_AVATARS.parent.url,
+      order: 1,
+    },
+    {
+      name: "Rekha Yadav",
+      role: "Tailoring batch 12, Women Empowerment programme",
+      message:
+        "I joined the tailoring course knowing nothing at all. Six months later I stitch for four families in my village and keep my own account book. अब मैं अपने पैरों पर खड़ी हूँ।",
+      imageUrl: TESTIMONIAL_AVATARS.trainee.url,
+      order: 2,
+    },
+    {
+      name: "Anjali Verma",
+      role: "Scholarship student, B.Sc. second year",
+      message:
+        "The foundation paid my fees and a mentor sat with me every Sunday before the entrance exam. I am the first girl in my family to reach college. मेरे सपने अब मेरे परिवार के सपने भी हैं।",
+      imageUrl: TESTIMONIAL_AVATARS.graduate.url,
+      order: 3,
+    },
+    {
+      name: "Ramesh Prajapati",
+      role: "Parent, Barabanki",
+      message:
+        "A health camp in our panchayat caught my son's eye problem early. His glasses arrived within a month and his marks improved that same term. समय पर जाँच ने बहुत कुछ बचा लिया।",
+      imageUrl: TESTIMONIAL_AVATARS.father.url,
+      order: 4,
+    },
+    {
+      name: "Mohit Kushwaha",
+      role: "Class 9 student, daily quiz player",
+      message:
+        "I play the daily quiz after school and my name has stayed in the top ten for three months. My reward coupon went straight into notebooks for my sister. पढ़ाई अब बोझ नहीं, खेल लगती है।",
+      imageUrl: TESTIMONIAL_AVATARS.student.url,
+      order: 5,
+    },
+    {
+      name: "Devendra Pal",
+      role: "Volunteer teacher, weekend classes",
+      message:
+        "I teach for two hours every Sunday and the children are always there before I am. Watching a child read her first full sentence is worth every weekend. यहाँ हर रविवार कुछ नया सिखा जाता है।",
+      imageUrl: TESTIMONIAL_AVATARS.volunteer.url,
+      order: 6,
+    },
   ];
   for (const t of testimonials) {
     await Testimonial.updateOne({ name: t.name }, { $setOnInsert: { ...t, active: true } }, { upsert: true });
@@ -92,10 +140,34 @@ async function main() {
   console.log("✓ Testimonials seeded");
 
   // ---- Partners ----
+  // No logoUrl on purpose — PartnerCard falls back to the name in brand type,
+  // which looks deliberate, where a missing logo file would look broken.
   const partners = [
-    { name: "Community Trust", description: "Local welfare partner", order: 1 },
-    { name: "EduReach", description: "Education programs collaborator", order: 2 },
-    { name: "HealthFirst", description: "Health camp partner", order: 3 },
+    {
+      name: "Jai Maa Durga Stores",
+      description: "Retail partner for reward coupons. रिवॉर्ड कूपन भुनाने का साझेदार।",
+      order: 1,
+    },
+    {
+      name: "Sanskar Vidya Mandir",
+      description: "Host school for after-school coaching batches. कोचिंग कक्षाओं का सहयोगी विद्यालय।",
+      order: 2,
+    },
+    {
+      name: "Gramin Swasthya Kendra",
+      description: "Doctors and nurses for our free health camps. नि:शुल्क स्वास्थ्य शिविरों में सहयोग।",
+      order: 3,
+    },
+    {
+      name: "Nari Shakti Swayam Sahayata Samuh",
+      description: "Women's self-help group behind the tailoring batches. सिलाई प्रशिक्षण में भागीदार।",
+      order: 4,
+    },
+    {
+      name: "Van Prahari Nursery",
+      description: "Saplings for school plantation drives. वृक्षारोपण के लिए पौधे उपलब्ध कराते हैं।",
+      order: 5,
+    },
   ];
   for (const p of partners) {
     await Partner.updateOne({ name: p.name }, { $setOnInsert: { ...p, active: true } }, { upsert: true });
@@ -103,27 +175,53 @@ async function main() {
   console.log("✓ Partners seeded");
 
   // ---- Videos ----
+  // Awareness films we share, credited to their publishers in the description.
+  // The foundation's own footage replaces these from Admin → Videos; every id
+  // here was checked against the YouTube oEmbed endpoint so the card thumbnail
+  // (built from the video id) actually resolves.
   const videos = [
-    { title: "Our Story", description: "A short introduction to our mission.", videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", order: 1 },
+    {
+      title: "Shakira promotes girls' education",
+      description: "UNICEF Goodwill Ambassador Shakira on why every girl belongs in a classroom. Published by UNICEF.",
+      category: "Awareness",
+      videoUrl: "https://www.youtube.com/watch?v=ZAi2O0MCScg",
+      order: 1,
+    },
+    {
+      title: "Educating girls",
+      description: "A report on what changes in a family when a daughter stays in school. Published by BBC News.",
+      category: "Awareness",
+      videoUrl: "https://www.youtube.com/watch?v=F8sCADS5wKg",
+      order: 2,
+    },
+    {
+      title: "Girls' education in India: progress and challenges",
+      description: "Where India stands on universal school education, with the numbers behind it. Published by Prof Arun C. Mehta.",
+      category: "Education",
+      videoUrl: "https://www.youtube.com/watch?v=Vt7Ok5uPLfc",
+      order: 3,
+    },
   ];
   for (const v of videos) {
     await Video.updateOne({ title: v.title }, { $setOnInsert: { ...v, active: true } }, { upsert: true });
   }
   console.log("✓ Videos seeded");
 
-  // ---- Gallery (uses picsum placeholders; replace via admin/Cloudinary) ----
-  const gallery = Array.from({ length: 8 }).map((_, i) => ({
-    title: `Program moment ${i + 1}`,
-    category: i % 2 === 0 ? "Education" : "Welfare",
-    imageUrl: `https://picsum.photos/seed/bhavika${i + 1}/800/800`,
-    width: 800,
-    height: 800,
+  // ---- Gallery ----
+  // Curated, individually verified photographs — see src/lib/images.ts. The
+  // lightbox caption gets the Hindi title plus the alt text, so the description
+  // carries real meaning instead of repeating the heading.
+  const gallery = GALLERY_IMAGES.map((img, i) => ({
+    title: img.title,
+    description: `${img.titleHi} — ${img.alt}`,
+    category: img.category,
+    imageUrl: img.url,
     order: i + 1,
   }));
   for (const g of gallery) {
     await GalleryItem.updateOne({ title: g.title }, { $setOnInsert: { ...g, active: true } }, { upsert: true });
   }
-  console.log("✓ Gallery seeded");
+  console.log(`✓ Gallery seeded (${gallery.length} photos)`);
 
   // ---- Activity rewards ----
   await ActivityReward.updateOne(

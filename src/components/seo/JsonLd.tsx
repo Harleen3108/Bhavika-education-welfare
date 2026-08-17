@@ -10,7 +10,7 @@ export function OrganizationJsonLd() {
     name: SITE.name,
     alternateName: SITE.shortName,
     url: siteUrl,
-    logo: `${siteUrl}/logo.png`,
+    logo: `${siteUrl}/logo-lockup.png`,
     slogan: SITE.tagline,
     description: SITE.description,
     email: SITE.contact.email,

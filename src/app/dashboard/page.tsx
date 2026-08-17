@@ -66,7 +66,7 @@ export default async function DashboardPage() {
             <CardBody>
               <div className="mb-4 flex items-center justify-between">
                 <CardTitle>Available quizzes</CardTitle>
-                <Link href="/dashboard/quizzes" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
+                <Link href="/dashboard/quizzes" className="text-sm font-semibold text-brand-700 hover:text-brand-700">
                   View all →
                 </Link>
               </div>
@@ -82,7 +82,7 @@ export default async function DashboardPage() {
             <CardBody>
               <div className="mb-2 flex items-center justify-between">
                 <CardTitle>Recent activity</CardTitle>
-                <Link href="/dashboard/wallet" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
+                <Link href="/dashboard/wallet" className="text-sm font-semibold text-brand-700 hover:text-brand-700">
                   Wallet →
                 </Link>
               </div>
@@ -128,7 +128,7 @@ export default async function DashboardPage() {
             <CardBody>
               <div className="mb-3 flex items-center justify-between">
                 <CardTitle>Top learners</CardTitle>
-                <Link href="/dashboard/leaderboard" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
+                <Link href="/dashboard/leaderboard" className="text-sm font-semibold text-brand-700 hover:text-brand-700">
                   Full board →
                 </Link>
               </div>
@@ -150,7 +150,7 @@ export default async function DashboardPage() {
 function Mini({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-xl bg-ink-50 py-3">
-      <p className="font-display text-xl font-bold text-brand-800">{value}</p>
+      <p className="font-display text-xl font-bold text-ink-900">{value}</p>
       <p className="text-xs text-ink-500">{label}</p>
     </div>
   );
@@ -177,7 +177,7 @@ function QuizCard({
         <Badge tone={kind === "Daily" ? "brand" : "accent"}>{kind}</Badge>
         {quiz.attemptedThisPeriod && <Badge tone="success">Completed</Badge>}
       </div>
-      <p className="mt-2 line-clamp-1 font-semibold text-brand-800">{quiz.title}</p>
+      <p className="mt-2 line-clamp-1 font-semibold text-ink-900">{quiz.title}</p>
       <div className="mt-1 flex items-center gap-3 text-xs text-ink-500">
         <span>{quiz.questionCount} questions</span>
         <span className="flex items-center gap-1">

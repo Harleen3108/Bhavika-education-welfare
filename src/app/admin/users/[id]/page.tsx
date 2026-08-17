@@ -140,7 +140,7 @@ function WalletRow({ label, value, bold }: { label: string; value: number; bold?
   return (
     <div className="flex items-center justify-between">
       <span className="text-ink-600">{label}</span>
-      <span className={bold ? "font-display text-lg font-bold text-brand-800" : "font-medium text-ink-800"}>
+      <span className={bold ? "font-display text-lg font-bold text-ink-900" : "font-medium text-ink-800"}>
         {formatPoints(value)}
       </span>
     </div>

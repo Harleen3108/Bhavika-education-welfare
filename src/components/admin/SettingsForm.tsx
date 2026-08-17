@@ -40,7 +40,7 @@ export function SettingsForm({ initial }: { initial: Settings }) {
   );
   const Check = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (b: boolean) => void }) => (
     <label className="flex items-center gap-2.5 text-sm font-medium text-ink-800">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-brand-500" />
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 rounded border-ink-300 text-brand-700 focus:ring-brand-500" />
       {label}
     </label>
   );

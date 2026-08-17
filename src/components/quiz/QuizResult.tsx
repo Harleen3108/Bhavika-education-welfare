@@ -31,7 +31,7 @@ export function QuizResult({ result }: { result: ResultDTO }) {
             <Stat label="Accuracy" value={`${pct}%`} sub="" tone="neutral" />
           </div>
           {expired && (
-            <div className="mt-4 flex items-center justify-center gap-1.5 text-sm text-[--color-warning]">
+            <div className="mt-4 flex items-center justify-center gap-1.5 text-sm text-warning">
               <Clock size={15} /> Submitted after time ran out.
             </div>
           )}
@@ -40,7 +40,7 @@ export function QuizResult({ result }: { result: ResultDTO }) {
 
       {/* Review */}
       <div className="mt-6 space-y-4">
-        <h3 className="text-lg font-semibold text-brand-800">Review answers</h3>
+        <h3 className="text-lg font-semibold text-ink-900">Review answers</h3>
         {result.questions.map((q, i) => (
           <Card key={q.id}>
             <CardBody>
@@ -69,9 +69,9 @@ export function QuizResult({ result }: { result: ResultDTO }) {
                       )}
                     >
                       {isCorrect ? (
-                        <CheckCircle2 size={16} className="shrink-0 text-[--color-success]" />
+                        <CheckCircle2 size={16} className="shrink-0 text-success" />
                       ) : isSelected ? (
-                        <XCircle size={16} className="shrink-0 text-[--color-danger]" />
+                        <XCircle size={16} className="shrink-0 text-danger" />
                       ) : (
                         <span className="h-4 w-4 shrink-0 rounded-full border border-ink-300" />
                       )}
@@ -93,7 +93,7 @@ export function QuizResult({ result }: { result: ResultDTO }) {
         <ButtonLink href="/dashboard/leaderboard">View leaderboard</ButtonLink>
       </div>
       <p className="mt-4 text-center text-sm text-ink-500">
-        Points have been added to your <Link href="/dashboard/wallet" className="text-brand-600 underline">wallet</Link>.
+        Points have been added to your <Link href="/dashboard/wallet" className="text-brand-700 underline">wallet</Link>.
       </p>
     </div>
   );

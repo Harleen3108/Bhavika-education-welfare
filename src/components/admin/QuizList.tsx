@@ -91,7 +91,7 @@ export function QuizList({ quizzes }: { quizzes: QuizRow[] }) {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
                         <Link href={`/admin/quizzes/${q.id}`} className="rounded-lg p-2 text-ink-500 hover:bg-brand-50 hover:text-brand-700" aria-label="Edit"><Pencil size={16} /></Link>
-                        <ConfirmButton onConfirm={() => remove(q.id)} className="rounded-lg p-2 text-ink-500 hover:bg-red-50 hover:text-[--color-danger]"><Trash2 size={16} /></ConfirmButton>
+                        <ConfirmButton onConfirm={() => remove(q.id)} className="rounded-lg p-2 text-ink-500 hover:bg-red-50 hover:text-danger"><Trash2 size={16} /></ConfirmButton>
                       </div>
                     </td>
                   </tr>

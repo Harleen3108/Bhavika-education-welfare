@@ -85,7 +85,7 @@ export function ContactsTable({ items }: { items: Contact[] }) {
           <div className="space-y-4">
             <div className="grid gap-2 text-sm sm:grid-cols-2">
               <p><span className="text-ink-500">Name:</span> <span className="font-medium">{selected.name}</span></p>
-              <p><span className="text-ink-500">Email:</span> <a href={`mailto:${selected.email}`} className="text-brand-600 underline">{selected.email}</a></p>
+              <p><span className="text-ink-500">Email:</span> <a href={`mailto:${selected.email}`} className="text-brand-700 underline">{selected.email}</a></p>
               {selected.phone && <p><span className="text-ink-500">Phone:</span> {selected.phone}</p>}
               {selected.subject && <p><span className="text-ink-500">Subject:</span> {selected.subject}</p>}
             </div>

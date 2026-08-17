@@ -46,7 +46,7 @@ export function QuizTimer({
     <div
       className={cn(
         "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 font-mono text-sm font-semibold tabular-nums",
-        danger ? "bg-red-50 text-[--color-danger]" : "bg-brand-50 text-brand-700",
+        danger ? "bg-red-50 text-danger" : "bg-brand-50 text-brand-700",
       )}
       role="timer"
       aria-live="off"

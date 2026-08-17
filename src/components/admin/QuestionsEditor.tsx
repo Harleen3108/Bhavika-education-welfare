@@ -81,7 +81,7 @@ export function QuestionsEditor({ quizId, questions }: { quizId: string; questio
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-brand-800">Questions ({questions.length})</h2>
+        <h2 className="text-lg font-semibold text-ink-900">Questions ({questions.length})</h2>
         <Button size="sm" onClick={openNew}><Plus size={16} /> Add question</Button>
       </div>
 
@@ -96,12 +96,12 @@ export function QuestionsEditor({ quizId, questions }: { quizId: string; questio
                   <p className="font-medium text-ink-800"><span className="text-ink-400">{i + 1}.</span> {q.text}</p>
                   <div className="flex shrink-0 gap-1">
                     <button onClick={() => openEdit(q)} className="rounded-lg p-2 text-ink-500 hover:bg-brand-50 hover:text-brand-700" aria-label="Edit"><Pencil size={16} /></button>
-                    <ConfirmButton onConfirm={() => remove(q.id)} className="rounded-lg p-2 text-ink-500 hover:bg-red-50 hover:text-[--color-danger]"><Trash2 size={16} /></ConfirmButton>
+                    <ConfirmButton onConfirm={() => remove(q.id)} className="rounded-lg p-2 text-ink-500 hover:bg-red-50 hover:text-danger"><Trash2 size={16} /></ConfirmButton>
                   </div>
                 </div>
                 <ul className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
                   {q.options.map((o, idx) => (
-                    <li key={idx} className={cn("flex items-center gap-1.5", idx === q.correctIndex ? "font-medium text-[--color-success]" : "text-ink-600")}>
+                    <li key={idx} className={cn("flex items-center gap-1.5", idx === q.correctIndex ? "font-medium text-success" : "text-ink-600")}>
                       {idx === q.correctIndex ? <CheckCircle2 size={14} /> : <Circle size={14} className="text-ink-300" />}
                       {o}
                     </li>
@@ -129,14 +129,14 @@ export function QuestionsEditor({ quizId, questions }: { quizId: string; questio
                   <button
                     type="button"
                     onClick={() => setDraft({ ...draft, correctIndex: i })}
-                    className={cn("shrink-0 rounded-full p-1", draft.correctIndex === i ? "text-[--color-success]" : "text-ink-300")}
+                    className={cn("shrink-0 rounded-full p-1", draft.correctIndex === i ? "text-success" : "text-ink-300")}
                     aria-label="Mark correct"
                   >
                     {draft.correctIndex === i ? <CheckCircle2 size={22} /> : <Circle size={22} />}
                   </button>
                   <Input value={opt} onChange={(e) => setOption(i, e.target.value)} placeholder={`Option ${i + 1}`} />
                   {draft.options.length > 2 && (
-                    <button type="button" onClick={() => removeOption(i)} className="shrink-0 rounded-lg p-2 text-ink-500 hover:bg-red-50 hover:text-[--color-danger]" aria-label="Remove option">
+                    <button type="button" onClick={() => removeOption(i)} className="shrink-0 rounded-lg p-2 text-ink-500 hover:bg-red-50 hover:text-danger" aria-label="Remove option">
                       <Trash2 size={16} />
                     </button>
                   )}
@@ -144,7 +144,7 @@ export function QuestionsEditor({ quizId, questions }: { quizId: string; questio
               ))}
             </div>
             {draft.options.length < 6 && (
-              <button type="button" onClick={addOption} className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700">
+              <button type="button" onClick={addOption} className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-700">
                 <Plus size={14} /> Add option
               </button>
             )}

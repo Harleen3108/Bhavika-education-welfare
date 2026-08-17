@@ -1,7 +1,7 @@
 import "server-only";
-import type { Types } from "mongoose";
+import type { Types, UpdateQuery } from "mongoose";
 import { dbConnect } from "@/server/db/connect";
-import { User } from "@/server/models";
+import { User, type IUser } from "@/server/models";
 import { DomainError } from "@/server/errors";
 import type { ProfileInput } from "@/lib/validation/profile";
 
@@ -48,6 +48,10 @@ export async function getProfile(userId: string): Promise<ProfileDTO> {
  * Update the user's own profile. Recomputes `profileCompleted`. Returns whether
  * the profile transitioned to complete for the first time, so the caller can
  * award the one-time profile-completion activity reward (Phase 1F/1G).
+ *
+ * `avatarUrl` is intentionally untouched here — it belongs to `setAvatarUrl`.
+ * Two writers for one field meant a profile save could silently revert a photo
+ * uploaded seconds earlier.
  */
 export async function updateProfile(
   userId: string,
@@ -67,7 +71,6 @@ export async function updateProfile(
         phone: input.phone || undefined,
         city: input.city || undefined,
         bio: input.bio || undefined,
-        avatarUrl: input.avatarUrl || undefined,
         profileCompleted: completed,
       },
     },
@@ -75,6 +78,30 @@ export async function updateProfile(
 
   const profile = await getProfile(userId);
   return { profile, newlyCompleted: completed && !wasComplete };
+}
+
+/**
+ * Set (or clear, with `null`) the member's avatar.
+ *
+ * Returns the URL that was replaced so the caller can release the old asset —
+ * the update runs with Mongoose's default `returnDocument: "before"` precisely
+ * to get that in a single round trip.
+ */
+export async function setAvatarUrl(
+  userId: string,
+  url: string | null,
+): Promise<{ avatarUrl: string; previousUrl: string }> {
+  await dbConnect();
+  const update: UpdateQuery<IUser> = url
+    ? { $set: { avatarUrl: url } }
+    : { $unset: { avatarUrl: 1 } };
+
+  const previous = await User.findByIdAndUpdate(userId, update, {
+    projection: { avatarUrl: 1 },
+  }).lean();
+  if (!previous) throw new DomainError("User not found.", 404, "NOT_FOUND");
+
+  return { avatarUrl: url ?? "", previousUrl: previous.avatarUrl ?? "" };
 }
 
 /** Lightweight header/summary info for dashboard chrome. */

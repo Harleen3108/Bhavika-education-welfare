@@ -22,8 +22,6 @@ export const POST = handle(async (req) => {
 
   await resendVerification(email);
 
-  return ok({
-    success: true,
-    message: "If your account needs verification, a new link has been sent.",
-  });
+  // Always the same answer, whether or not the address is registered.
+  return ok({ ok: true });
 });

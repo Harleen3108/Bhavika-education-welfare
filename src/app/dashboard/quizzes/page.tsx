@@ -30,7 +30,7 @@ export default async function QuizzesPage() {
         <div className="space-y-8">
           {daily.length > 0 && (
             <section>
-              <h2 className="mb-4 text-lg font-semibold text-brand-800">Daily quizzes</h2>
+              <h2 className="mb-4 text-lg font-semibold text-ink-900">Daily quizzes</h2>
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {daily.map((q) => <QuizListCard key={q.id} quiz={q} />)}
               </div>
@@ -38,7 +38,7 @@ export default async function QuizzesPage() {
           )}
           {weekly.length > 0 && (
             <section>
-              <h2 className="mb-4 text-lg font-semibold text-brand-800">Weekly quizzes</h2>
+              <h2 className="mb-4 text-lg font-semibold text-ink-900">Weekly quizzes</h2>
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {weekly.map((q) => <QuizListCard key={q.id} quiz={q} />)}
               </div>

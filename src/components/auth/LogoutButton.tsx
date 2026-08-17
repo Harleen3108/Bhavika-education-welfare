@@ -18,7 +18,7 @@ export function LogoutButton({
       type="button"
       onClick={() => signOut({ callbackUrl: "/" })}
       className={cn(
-        "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-[--color-danger]",
+        "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-danger",
         className,
       )}
     >

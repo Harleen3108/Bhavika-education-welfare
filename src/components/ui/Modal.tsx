@@ -40,7 +40,7 @@ export function Modal({
         )}
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-ink-200 bg-white px-5 py-4">
-          <h2 className="text-lg font-semibold text-brand-800">{title}</h2>
+          <h2 className="text-lg font-semibold text-ink-900">{title}</h2>
           <button onClick={onClose} className="rounded-full p-1.5 text-ink-500 hover:bg-ink-100" aria-label="Close">
             <X size={20} />
           </button>

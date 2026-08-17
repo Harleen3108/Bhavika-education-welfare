@@ -34,7 +34,7 @@ export function StringListEditor({
             <button
               type="button"
               onClick={() => onChange(values.filter((_, idx) => idx !== i))}
-              className="shrink-0 rounded-lg p-2 text-ink-500 hover:bg-red-50 hover:text-[--color-danger]"
+              className="shrink-0 rounded-lg p-2 text-ink-500 hover:bg-red-50 hover:text-danger"
               aria-label="Remove"
             >
               <Trash2 size={16} />
@@ -45,7 +45,7 @@ export function StringListEditor({
       <button
         type="button"
         onClick={() => onChange([...values, ""])}
-        className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
+        className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-700"
       >
         <Plus size={14} /> Add item
       </button>
@@ -80,7 +80,7 @@ export function ObjectListEditor({
               <button
                 type="button"
                 onClick={() => onChange(values.filter((_, idx) => idx !== i))}
-                className="rounded-lg p-1.5 text-ink-500 hover:bg-red-50 hover:text-[--color-danger]"
+                className="rounded-lg p-1.5 text-ink-500 hover:bg-red-50 hover:text-danger"
                 aria-label="Remove"
               >
                 <Trash2 size={15} />
@@ -108,7 +108,7 @@ export function ObjectListEditor({
       <button
         type="button"
         onClick={() => onChange([...values, Object.fromEntries(fields.map((f) => [f.name, ""]))])}
-        className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
+        className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-700"
       >
         <Plus size={14} /> Add
       </button>

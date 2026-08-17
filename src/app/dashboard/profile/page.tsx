@@ -49,11 +49,11 @@ export default async function ProfilePage() {
                 </Row>
                 <Row label="Email verified">
                   {profile.emailVerified ? (
-                    <span className="inline-flex items-center gap-1 text-[--color-success]">
+                    <span className="inline-flex items-center gap-1 text-success">
                       <CheckCircle2 size={16} /> Verified
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-[--color-danger]">
+                    <span className="inline-flex items-center gap-1 text-danger">
                       <XCircle size={16} /> Not verified
                     </span>
                   )}

@@ -24,7 +24,7 @@ export default async function ResetPasswordPage({
         </Alert>
         <Link
           href="/forgot-password"
-          className="mt-4 inline-block text-sm font-semibold text-brand-600 hover:text-brand-700"
+          className="mt-4 inline-block text-sm font-semibold text-brand-700 hover:text-brand-700"
         >
           Request new link →
         </Link>

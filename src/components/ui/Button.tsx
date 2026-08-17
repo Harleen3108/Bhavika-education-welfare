@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 type Variant =
   | "primary"
+  | "gradient"
   | "secondary"
   | "outline"
   | "ghost"
@@ -14,22 +15,33 @@ type Variant =
 type Size = "sm" | "md" | "lg" | "icon";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-full font-semibold tracking-normal transition-colors " +
+  "inline-flex items-center justify-center gap-2 rounded-full font-semibold tracking-normal transition-all " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none " +
   "disabled:opacity-60 select-none whitespace-nowrap";
 
+/*
+  Button fills carry white label text, so they use the deeper end of the brand
+  ramp: brand-500 measures only 3.19:1 against white and would fail WCAG AA on
+  every primary action on the site. brand-700 clears it at 5.66:1 while staying
+  unmistakably coral.
+*/
 const variants: Record<Variant, string> = {
   primary:
-    "bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-brand-500 shadow-sm",
+    "bg-brand-700 text-white hover:bg-brand-800 focus-visible:outline-brand-600 shadow-sm",
+  /** Signature gold→coral→rose CTA. Lifts on hover rather than shifting hue. */
+  gradient:
+    "bg-gradient-cta text-white shadow-[0_4px_14px_-2px_rgb(194_47_16/0.45)] " +
+    "hover:shadow-[0_8px_22px_-4px_rgb(194_47_16/0.55)] hover:-translate-y-0.5 " +
+    "focus-visible:outline-brand-600",
   secondary:
-    "bg-accent-500 text-white hover:bg-accent-600 focus-visible:outline-accent-500 shadow-sm",
+    "bg-accent-600 text-white hover:bg-accent-700 focus-visible:outline-accent-500 shadow-sm",
   outline:
-    "border border-brand-600 text-brand-700 bg-transparent hover:bg-brand-50 focus-visible:outline-brand-500",
-  ghost: "text-brand-700 hover:bg-brand-50 focus-visible:outline-brand-500",
-  danger: "bg-[--color-danger] text-white hover:opacity-90 focus-visible:outline-red-500",
+    "border border-ink-300 text-ink-800 bg-surface hover:border-brand-400 hover:text-brand-700 focus-visible:outline-brand-500",
+  ghost: "text-ink-700 hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-brand-500",
+  danger: "bg-danger text-white hover:opacity-90 focus-visible:outline-red-500",
   subtle: "bg-ink-100 text-ink-800 hover:bg-ink-200 focus-visible:outline-brand-500",
   cta:
-    "bg-cta-500 text-night-900 font-semibold hover:bg-cta-400 focus-visible:outline-cta-400 shadow-sm",
+    "bg-brand-700 text-white font-semibold hover:bg-brand-800 focus-visible:outline-brand-600 shadow-sm",
   onDark:
     "border border-white/40 text-white bg-white/5 hover:bg-white/15 focus-visible:outline-white backdrop-blur-sm",
 };

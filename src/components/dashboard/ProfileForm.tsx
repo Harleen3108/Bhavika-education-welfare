@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { profileSchema, type ProfileInput } from "@/lib/validation/profile";
 import type { ProfileDTO } from "@/server/services/user.service";
+import { AvatarUploader } from "@/components/dashboard/AvatarUploader";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea, FormField } from "@/components/ui/Field";
 
@@ -24,7 +25,6 @@ export function ProfileForm({ profile }: { profile: ProfileDTO }) {
       phone: profile.phone,
       city: profile.city,
       bio: profile.bio,
-      avatarUrl: profile.avatarUrl,
     },
   });
 
@@ -57,32 +57,34 @@ export function ProfileForm({ profile }: { profile: ProfileDTO }) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-      <div className="grid gap-5 sm:grid-cols-2">
-        <FormField label="Full name" htmlFor="name" required error={errors.name?.message}>
-          <Input id="name" autoComplete="name" aria-invalid={!!errors.name} {...register("name")} />
-        </FormField>
-        <FormField label="Phone" htmlFor="phone" error={errors.phone?.message}>
-          <Input id="phone" type="tel" autoComplete="tel" aria-invalid={!!errors.phone} {...register("phone")} />
-        </FormField>
-      </div>
+    <div className="space-y-7">
+      {/* The photo saves itself the moment it uploads, so it sits outside the
+          form — "Save changes" below governs the text fields only. */}
+      <AvatarUploader value={profile.avatarUrl} name={profile.name} />
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <FormField label="City" htmlFor="city" error={errors.city?.message}>
-          <Input id="city" autoComplete="address-level2" aria-invalid={!!errors.city} {...register("city")} />
-        </FormField>
-        <FormField label="Avatar image URL" htmlFor="avatarUrl" error={errors.avatarUrl?.message} hint="Paste an image URL (optional).">
-          <Input id="avatarUrl" type="url" aria-invalid={!!errors.avatarUrl} {...register("avatarUrl")} />
-        </FormField>
-      </div>
+      <hr className="border-ink-100" />
 
-      <FormField label="Bio" htmlFor="bio" error={errors.bio?.message}>
-        <Textarea id="bio" rows={4} placeholder="Tell us a little about yourself…" {...register("bio")} />
-      </FormField>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <FormField label="Full name" htmlFor="name" required error={errors.name?.message}>
+            <Input id="name" autoComplete="name" aria-invalid={!!errors.name} {...register("name")} />
+          </FormField>
+          <FormField label="Phone" htmlFor="phone" error={errors.phone?.message}>
+            <Input id="phone" type="tel" autoComplete="tel" aria-invalid={!!errors.phone} {...register("phone")} />
+          </FormField>
+          <FormField label="City" htmlFor="city" error={errors.city?.message}>
+            <Input id="city" autoComplete="address-level2" aria-invalid={!!errors.city} {...register("city")} />
+          </FormField>
+        </div>
 
-      <Button type="submit" loading={isSubmitting} disabled={!isDirty}>
-        Save changes
-      </Button>
-    </form>
+        <FormField label="Bio" htmlFor="bio" error={errors.bio?.message}>
+          <Textarea id="bio" rows={4} placeholder="Tell us a little about yourself…" {...register("bio")} />
+        </FormField>
+
+        <Button type="submit" loading={isSubmitting} disabled={!isDirty}>
+          Save changes
+        </Button>
+      </form>
+    </div>
   );
 }
