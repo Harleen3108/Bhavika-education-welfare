@@ -7,6 +7,7 @@ import { Clock, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Skeleton, SkeletonScreen } from "@/components/ui/Skeleton";
+import { Spinner } from "@/components/ui/States";
 import { QuizTimer } from "@/components/quiz/QuizTimer";
 import { QuizResult } from "@/components/quiz/QuizResult";
 import type { StartResult, ResultDTO } from "@/server/services/quiz.service";
