@@ -3,7 +3,7 @@ import type { Types } from "mongoose";
 import { withTransaction, dbConnect } from "@/server/db/connect";
 import { User, Wallet } from "@/server/models";
 import { AccountStatus } from "@/lib/enums";
-import { env } from "@/lib/env";
+import { env, getAppBaseUrl } from "@/lib/env";
 import { SITE } from "@/lib/constants";
 import { DomainError } from "@/server/errors";
 import { hashPassword } from "@/server/auth/password";
@@ -20,8 +20,6 @@ import {
 } from "./referral.service";
 import type { RegisterInput } from "@/lib/validation/auth";
 
-const baseUrl = env.SITE_URL || SITE.url;
-
 export type RegisterResult = { userId: string; email: string; resent: boolean };
 
 /**
@@ -36,7 +34,7 @@ async function sendVerificationBundle(
 ): Promise<void> {
   const token = await issueToken(userId, "EMAIL_VERIFY");
   const code = await issueOtp(userId);
-  const url = `${baseUrl}/verify-email?token=${token}`;
+  const url = `${getAppBaseUrl()}/verify-email?token=${token}`;
   await sendVerificationEmail(email, name, url, code).catch((e) =>
     console.error("[auth] verification email failed:", e),
   );
@@ -154,7 +152,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
   const user = await User.findOne({ email: email.toLowerCase() }).select("_id name");
   if (user) {
     const token = await issueToken(user._id, "PASSWORD_RESET");
-    const url = `${baseUrl}/reset-password?token=${token}`;
+    const url = `${getAppBaseUrl()}/reset-password?token=${token}`;
     await sendPasswordResetEmail(email, user.name, url).catch(() => {});
   }
 }

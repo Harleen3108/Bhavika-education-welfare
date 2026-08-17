@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { SITE } from "@/lib/constants";
 
 /**
  * Server-only, validated environment variables.
@@ -33,7 +34,7 @@ const schema = z.object({
   // optional fallback so an existing deployment keeps working.
   BREVO_API_KEY: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().default("noreply@alerts.avanienterprises.in"),
+  EMAIL_FROM: z.string().default("alerts@avanienterprises.in"),
   EMAIL_FROM_NAME: z.string().default("Bhavika Foundation"),
 
   // Rate limiting (Upstash) — optional; falls back to in-memory in dev
@@ -80,3 +81,17 @@ export const emailProvider: "brevo" | "resend" | "console" = env.BREVO_API_KEY
   : env.RESEND_API_KEY
     ? "resend"
     : "console";
+
+/**
+ * Resolves the operational base URL for transactional emails and links.
+ * Avoids returning localhost when running in production/Vercel.
+ */
+export function getAppBaseUrl(): string {
+  if (env.SITE_URL && !env.SITE_URL.includes("localhost")) {
+    return env.SITE_URL;
+  }
+  if (process.env.VERCEL_URL && isProd) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return env.SITE_URL && !env.SITE_URL.includes("localhost") ? env.SITE_URL : SITE.url;
+}

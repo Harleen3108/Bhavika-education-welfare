@@ -6,7 +6,7 @@ import { User, Referral, QuizAttempt } from "@/server/models";
 import { ReferralStatus, AccountStatus, AttemptStatus, PointSource } from "@/lib/enums";
 import { REFERRAL_CODE_LENGTH } from "@/lib/constants";
 import { SITE } from "@/lib/constants";
-import { env } from "@/lib/env";
+import { env, getAppBaseUrl } from "@/lib/env";
 import { getSettings } from "./content.service";
 import { creditPoints } from "./wallet.service";
 import { sendReferralJoinedEmail } from "./email.service";
@@ -80,7 +80,7 @@ async function notifyReferrer(
     // env.SITE_URL here, not SITE.url as the share link uses: this is a
     // destination for the person receiving the mail, so in development it
     // should point at the running host rather than at production.
-    const base = env.SITE_URL || SITE.url;
+    const base = getAppBaseUrl();
     await sendReferralJoinedEmail(
       referrer.email,
       referrer.name,

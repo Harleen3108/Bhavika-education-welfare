@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import { AccountStatus, UserRole } from "@/lib/enums";
+import { SITE } from "@/lib/constants";
 
 /**
  * Edge-safe Auth.js config (no DB / Node-only imports here). The Credentials
@@ -14,6 +15,17 @@ export const authConfig = {
   },
   trustHost: true,
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return url;
+      try {
+        const urlObj = new URL(url);
+        const baseObj = new URL(baseUrl);
+        if (urlObj.origin === baseObj.origin) return url;
+        if (urlObj.origin === new URL(SITE.url).origin) return url;
+        if (process.env.VERCEL_URL && urlObj.host === process.env.VERCEL_URL) return url;
+      } catch {}
+      return url.startsWith("http") ? url : baseUrl;
+    },
     /** Persist identity + role + status into the JWT at sign-in. */
     async jwt({ token, user }) {
       if (user) {
