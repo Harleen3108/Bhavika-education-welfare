@@ -3,18 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, ArrowUpRight } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
-import { ButtonLink } from "@/components/ui/Button";
+import { SessionNavActions } from "@/components/layout/SessionNavActions";
 import { Hi } from "@/components/ui/Bilingual";
 import { PUBLIC_NAV } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-export function Navbar({
-  session,
-}: {
-  session?: { name: string; role: string } | null;
-}) {
+export function Navbar() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = React.useState(false);
 
@@ -76,24 +72,7 @@ export function Navbar({
 
         {/* Desktop CTAs */}
         <div className="hidden items-center gap-2 xl:flex">
-          {session ? (
-            <ButtonLink
-              href={session.role === "ADMIN" ? "/admin" : "/dashboard"}
-              variant="gradient"
-              size="sm"
-            >
-              Dashboard <ArrowUpRight size={16} />
-            </ButtonLink>
-          ) : (
-            <>
-              <ButtonLink href="/login" variant="ghost" size="sm">
-                Log in
-              </ButtonLink>
-              <ButtonLink href="/register" variant="gradient" size="sm">
-                Play quiz <ArrowUpRight size={16} />
-              </ButtonLink>
-            </>
-          )}
+          <SessionNavActions />
         </div>
 
         {/* Mobile toggle */}
@@ -140,24 +119,7 @@ export function Navbar({
             );
           })}
           <li className="mt-3 flex gap-2 px-1 pb-1">
-            {session ? (
-              <ButtonLink
-                href={session.role === "ADMIN" ? "/admin" : "/dashboard"}
-                variant="gradient"
-                className="flex-1"
-              >
-                Dashboard
-              </ButtonLink>
-            ) : (
-              <>
-                <ButtonLink href="/login" variant="outline" className="flex-1">
-                  Log in
-                </ButtonLink>
-                <ButtonLink href="/register" variant="gradient" className="flex-1">
-                  Play quiz
-                </ButtonLink>
-              </>
-            )}
+            <SessionNavActions compact />
           </li>
         </ul>
       </div>

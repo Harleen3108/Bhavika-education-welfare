@@ -13,6 +13,9 @@ import {
   AlertTriangle,
   Lightbulb,
   Clock,
+  MessageCircle,
+  Phone,
+  Mail,
   Heart,
 } from "lucide-react";
 import { Container, Section } from "@/components/ui/Container";
@@ -21,6 +24,7 @@ import { Card, CardBody } from "@/components/ui/Card";
 import { BiHeading, Hi } from "@/components/ui/Bilingual";
 import { TestimonialCard, PartnerChip } from "@/components/public/Cards";
 import { HeroQuizCard } from "@/components/home/HeroQuizCard";
+import { ContactForm } from "@/components/public/ContactForm";
 import { icon } from "@/components/home/icon-map";
 import { CountUp, Parallax, Reveal, StaggerGroup, TiltCard } from "@/components/motion";
 import { SITE } from "@/lib/constants";
@@ -193,8 +197,15 @@ export default async function HomePage() {
                   aria-hidden
                   className="mt-[0.45rem] h-2 w-2 shrink-0 rounded-full bg-brand-500 sm:mt-0"
                 />
+                {/*
+                  The full sentence plus its Hindi cannot fit one line at 360px
+                  at any readable size, and wrapping mid-phrase looked broken.
+                  The narrowest screens get the claim that matters plus the
+                  Hindi; the clause returns as soon as there is room for it.
+                */}
                 <span className="min-w-0">
-                  Registered Non-Profit · Education for every child{" "}
+                  Registered Non-Profit
+                  <span className="hidden xs:inline"> · Education for every child</span>{" "}
                   <Hi inline>शिक्षा हर बच्चे का अधिकार</Hi>
                 </span>
               </span>
@@ -563,10 +574,17 @@ export default async function HomePage() {
               eyebrow="The platform"
               eyebrowHi="आने वाला मंच"
               title={
-                <>
+                /*
+                  Held on one line. type-h2 floors at 30px, which needs ~345px
+                  for this phrase and so broke it as "Learn •" / "Compete • Earn"
+                  on a 360px screen — the bullets are the rhythm of the phrase
+                  and splitting them reads as a mistake. Sized down below sm and
+                  handed back to the h2 scale above it.
+                */
+                <span className="block text-[1.5rem] whitespace-nowrap sm:text-inherit">
                   Learn <span className="text-brand-400">•</span> Compete{" "}
                   <span className="text-brand-400">•</span> Earn
-                </>
+                </span>
               }
               titleHi="सीखो • जीतो • कमाओ"
               description="One connected journey — from a child answering a question, to a family saving money at the checkout counter."
@@ -1177,6 +1195,92 @@ export default async function HomePage() {
               </details>
             ))}
           </StaggerGroup>
+        </Container>
+      </Section>
+
+      {/* ═══════════════════════════════════ Contact ═══════════════════════ */}
+      <Section className="bg-ink-50/60">
+        <Container>
+          <div className="grid gap-10 lg:grid-cols-[1fr_1.15fr] lg:gap-14">
+            <Reveal>
+              <BiHeading
+                align="left"
+                eyebrow="Contact"
+                eyebrowHi="संपर्क करें"
+                title="Talk to our team"
+                titleHi="हमसे बात करें"
+                description="For admissions, partnerships, donations or press. WhatsApp gets the fastest reply — most messages are answered the same day."
+              />
+
+              <ul className="mt-8 flex flex-col gap-3">
+                {[
+                  {
+                    icon: MessageCircle,
+                    label: "WhatsApp",
+                    labelHi: "व्हाट्सएप",
+                    value: SITE.contact.phone,
+                    href: `https://wa.me/${SITE.contact.whatsapp}`,
+                    external: true,
+                  },
+                  {
+                    icon: Phone,
+                    label: "Call us",
+                    labelHi: "कॉल करें",
+                    value: SITE.contact.phone,
+                    href: `tel:${SITE.contact.phone.replace(/\s+/g, "")}`,
+                    external: false,
+                  },
+                  {
+                    icon: Mail,
+                    label: "Email",
+                    labelHi: "ईमेल",
+                    value: SITE.contact.email,
+                    href: `mailto:${SITE.contact.email}`,
+                    external: false,
+                  },
+                ].map((c) => (
+                  <li key={c.label}>
+                    <a
+                      href={c.href}
+                      {...(c.external
+                        ? { target: "_blank", rel: "noopener noreferrer" }
+                        : {})}
+                      className="flex min-h-11 items-center gap-3 rounded-2xl border border-ink-200 bg-surface px-4 py-3 transition-colors hover:border-brand-300"
+                    >
+                      <span
+                        aria-hidden
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700"
+                      >
+                        <c.icon size={18} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-ink-900">
+                          {c.label} <Hi inline>{c.labelHi}</Hi>
+                        </span>
+                        <span className="block truncate text-sm wrap-anywhere text-ink-600">
+                          {c.value}
+                        </span>
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+
+            <Reveal delay={0.1}>
+              <Card>
+                <CardBody className="p-6! sm:p-8!">
+                  <h3 className="text-xl">Send us a message</h3>
+                  <Hi className="mt-0.5 block font-semibold text-brand-700">
+                    हमें संदेश भेजें
+                  </Hi>
+                  <div className="mt-6">
+                    <ContactForm />
+                  </div>
+                </CardBody>
+              </Card>
+            </Reveal>
+          </div>
         </Container>
       </Section>
 
