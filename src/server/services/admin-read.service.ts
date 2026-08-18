@@ -16,8 +16,11 @@ import {
   Referral,
   ContactSubmission,
   SystemSettings,
+  Coupon,
 } from "@/server/models";
 import { DEFAULT_SETTINGS, SITE } from "@/lib/constants";
+import { CouponStatus } from "@/lib/enums";
+import { isCouponCode, normalizeCouponCode } from "@/lib/validation/coupon";
 import { DEFAULT_ABOUT, DEFAULT_MISSION_VISION, DEFAULT_CONTACT, CONTENT_KEYS } from "@/lib/defaults";
 
 const PAGE = 20;
@@ -552,6 +555,280 @@ export async function adminListTransactions(opts: AdminTxnFilters) {
     page,
     pageSize: PAGE,
     pages: Math.max(1, Math.ceil(total / PAGE)),
+  };
+}
+
+// ---- Coupons ----
+
+/**
+ * Rows one CSV export may pull. The UI never asks for more than `PAGE`; this
+ * caps the export so a filter matching the whole collection cannot try to
+ * serialise it into memory in one response.
+ */
+const COUPON_EXPORT_MAX = 5000;
+
+export type AdminCouponRow = {
+  id: string;
+  code: string;
+  /** Empty when the member's account no longer exists. */
+  userId: string;
+  member: string;
+  email: string;
+  valueRupees: number;
+  pointsSpent: number;
+  /**
+   * EFFECTIVE status, matching `CouponDTO.status` in coupon.service: a stored
+   * ACTIVE row whose `expiresAt` has passed reports EXPIRED. Nothing schedules
+   * the expiry sweep yet, so reading the stored status directly would count
+   * long-dead coupons as live liability.
+   */
+  status: string;
+  source: string;
+  issuedAt: string;
+  expiresAt: string;
+  redeemedAt: string | null;
+  /** The partner store's order id — only ever set on a redeemed coupon. */
+  externalRef: string | null;
+  /** Whole days before forfeit. 0 once redeemed or expired. */
+  daysRemaining: number;
+};
+
+/**
+ * Coupon economics at a glance.
+ *
+ * `activeRupees` is the one that matters financially: the face value of every
+ * coupon that is still usable today, i.e. what the partner store could still
+ * present for settlement. Redeemed value is already spent, and expired value is
+ * forfeited — neither is owed — so only the active band is a liability.
+ */
+export type AdminCouponTotals = {
+  activeCount: number;
+  /** OUTSTANDING LIABILITY — Σ valueRupees where effective status is ACTIVE. */
+  activeRupees: number;
+  /** Points members have already paid for that outstanding liability. */
+  activePoints: number;
+  redeemedCount: number;
+  redeemedRupees: number;
+  expiredCount: number;
+  expiredRupees: number;
+  /** Points spent on coupons that lapsed unused. Never refunded, by decision. */
+  forfeitedPoints: number;
+};
+
+export type AdminCouponFilters = {
+  /** Coupon code, store order reference, or member name / email / referral code. */
+  q?: string;
+  /** Effective status, not stored status. */
+  status?: string;
+  page?: number;
+  /** Rows per page. Raised by the CSV export; the console leaves it at `PAGE`. */
+  pageSize?: number;
+};
+
+export type AdminCouponPage = {
+  items: AdminCouponRow[];
+  totals: AdminCouponTotals;
+  total: number;
+  page: number;
+  pageSize: number;
+  pages: number;
+};
+
+type CouponTotalsAgg = {
+  activeCount: number;
+  activeRupees: number;
+  activePoints: number;
+  redeemedCount: number;
+  redeemedRupees: number;
+  expiredCount: number;
+  expiredRupees: number;
+  forfeitedPoints: number;
+};
+
+const ZERO_COUPON_TOTALS: AdminCouponTotals = {
+  activeCount: 0,
+  activeRupees: 0,
+  activePoints: 0,
+  redeemedCount: 0,
+  redeemedRupees: 0,
+  expiredCount: 0,
+  expiredRupees: 0,
+  forfeitedPoints: 0,
+};
+
+const DAY_MS = 86_400_000;
+
+/**
+ * A query fragment selecting one EFFECTIVE status.
+ *
+ * The expiry sweep is what eventually writes EXPIRED to the document, so until
+ * it runs (and nothing schedules it yet) a lapsed coupon is still stored as
+ * ACTIVE. Every filter here therefore reads the clock, not just the field —
+ * otherwise "Active" would list coupons no shopkeeper would accept.
+ */
+function couponStatusFilter(status: string, now: Date): Record<string, unknown> | null {
+  if (status === CouponStatus.ACTIVE) {
+    return { status: CouponStatus.ACTIVE, expiresAt: { $gt: now } };
+  }
+  if (status === CouponStatus.REDEEMED) return { status: CouponStatus.REDEEMED };
+  if (status === CouponStatus.EXPIRED) {
+    return {
+      $or: [
+        { status: CouponStatus.EXPIRED },
+        { status: CouponStatus.ACTIVE, expiresAt: { $lte: now } },
+      ],
+    };
+  }
+  return null;
+}
+
+/**
+ * Resolve the search box to a query fragment.
+ *
+ * A complete code short-circuits to an exact match on the unique index — the
+ * admin pastes `bhav 7k2x9qm4 p8rt` off a support ticket in whatever shape it
+ * arrived, and `normalizeCouponCode` turns every one of those into the stored
+ * form. Anything else is a substring hunt across the code, the store's order
+ * reference (how a reconciliation query arrives) and the member.
+ */
+async function couponSearchFilter(term: string): Promise<Record<string, unknown>> {
+  const normalized = normalizeCouponCode(term);
+  if (isCouponCode(normalized)) return { code: normalized };
+
+  const re = searchRegex(term);
+  // Members are resolved to ids first: one indexed coupon query beats joining
+  // every coupon to its owner just to throw most of them away.
+  const members = await User.find({
+    $or: [{ name: re }, { email: re }, { referralCode: term.toUpperCase() }],
+  })
+    .select("_id")
+    .limit(500)
+    .lean();
+
+  return {
+    $or: [{ code: re }, { externalRef: re }, { user: { $in: members.map((m) => m._id) } }],
+  };
+}
+
+/**
+ * The coupon ledger, filtered and paginated, with the totals an admin would
+ * otherwise have to add up by hand.
+ *
+ * The totals deliberately ignore the STATUS filter while honouring the search:
+ * they are a breakdown *by* status, so applying the status filter to them would
+ * zero two of the three bands and make the liability figure disappear exactly
+ * when an admin narrows to "Redeemed" to investigate something.
+ */
+export async function adminListCoupons(opts: AdminCouponFilters): Promise<AdminCouponPage> {
+  await dbConnect();
+  const now = new Date();
+  const page = Math.max(1, opts.page ?? 1);
+  const pageSize = Math.min(Math.max(1, opts.pageSize ?? PAGE), COUPON_EXPORT_MAX);
+
+  const term = opts.q?.trim();
+  const search = term ? await couponSearchFilter(term) : null;
+  const status = opts.status ? couponStatusFilter(opts.status, now) : null;
+
+  // $and rather than a merged object: search and status can both contribute an
+  // $or, and the second would silently overwrite the first.
+  const clauses = [search, status].filter((c): c is Record<string, unknown> => c !== null);
+  const filter: Record<string, unknown> = clauses.length > 0 ? { $and: clauses } : {};
+  const totalsFilter: Record<string, unknown> = search ?? {};
+
+  /*
+    Effective status again, this time as aggregation expressions. `$match` in a
+    pipeline is sent to the server verbatim, so these must mirror
+    `couponStatusFilter` exactly or the tiles and the table would disagree.
+  */
+  const isActive = {
+    $and: [{ $eq: ["$status", CouponStatus.ACTIVE] }, { $gt: ["$expiresAt", now] }],
+  };
+  const isRedeemed = { $eq: ["$status", CouponStatus.REDEEMED] };
+  const isExpired = {
+    $or: [
+      { $eq: ["$status", CouponStatus.EXPIRED] },
+      { $and: [{ $eq: ["$status", CouponStatus.ACTIVE] }, { $lte: ["$expiresAt", now] }] },
+    ],
+  };
+
+  const [docs, total, sums] = await Promise.all([
+    Coupon.find(filter)
+      .sort({ issuedAt: -1 })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .lean(),
+    Coupon.countDocuments(filter),
+    Coupon.aggregate<CouponTotalsAgg>([
+      { $match: totalsFilter },
+      {
+        $group: {
+          _id: null,
+          activeCount: { $sum: { $cond: [isActive, 1, 0] } },
+          activeRupees: { $sum: { $cond: [isActive, "$valueRupees", 0] } },
+          activePoints: { $sum: { $cond: [isActive, "$pointsSpent", 0] } },
+          redeemedCount: { $sum: { $cond: [isRedeemed, 1, 0] } },
+          redeemedRupees: { $sum: { $cond: [isRedeemed, "$valueRupees", 0] } },
+          expiredCount: { $sum: { $cond: [isExpired, 1, 0] } },
+          expiredRupees: { $sum: { $cond: [isExpired, "$valueRupees", 0] } },
+          forfeitedPoints: { $sum: { $cond: [isExpired, "$pointsSpent", 0] } },
+        },
+      },
+    ]),
+  ]);
+
+  // One query for every member on the page, not one per row: a 20-row page was
+  // otherwise 20 round trips, and the CSV export would be thousands.
+  const userIds = [...new Map(docs.map((d) => [d.user.toString(), d.user])).values()];
+  const users =
+    userIds.length > 0
+      ? await User.find({ _id: { $in: userIds } }).select("name email").lean()
+      : [];
+  const userById = new Map(users.map((u) => [u._id.toString(), u]));
+
+  const agg = sums[0];
+  const totals: AdminCouponTotals = agg
+    ? {
+        activeCount: agg.activeCount,
+        activeRupees: agg.activeRupees,
+        activePoints: agg.activePoints,
+        redeemedCount: agg.redeemedCount,
+        redeemedRupees: agg.redeemedRupees,
+        expiredCount: agg.expiredCount,
+        expiredRupees: agg.expiredRupees,
+        forfeitedPoints: agg.forfeitedPoints,
+      }
+    : ZERO_COUPON_TOTALS;
+
+  return {
+    items: docs.map((c) => {
+      const lapsed = c.status === CouponStatus.ACTIVE && c.expiresAt.getTime() <= now.getTime();
+      const effective = lapsed ? CouponStatus.EXPIRED : c.status;
+      const owner = userById.get(c.user.toString());
+      return {
+        id: id(c),
+        code: c.code,
+        userId: owner ? owner._id.toString() : "",
+        member: owner?.name ?? "Deleted member",
+        email: owner?.email ?? "",
+        valueRupees: c.valueRupees,
+        pointsSpent: c.pointsSpent,
+        status: effective,
+        source: c.source,
+        issuedAt: c.issuedAt.toISOString(),
+        expiresAt: c.expiresAt.toISOString(),
+        redeemedAt: c.redeemedAt ? c.redeemedAt.toISOString() : null,
+        externalRef: c.externalRef ?? null,
+        daysRemaining:
+          effective === CouponStatus.ACTIVE
+            ? Math.max(0, Math.ceil((c.expiresAt.getTime() - now.getTime()) / DAY_MS))
+            : 0,
+      };
+    }),
+    totals,
+    total,
+    page,
+    pageSize,
+    pages: Math.max(1, Math.ceil(total / pageSize)),
   };
 }
 

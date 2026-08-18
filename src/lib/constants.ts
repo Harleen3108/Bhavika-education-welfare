@@ -64,7 +64,7 @@ export const USER_NAV = [
   { label: "Wallet", href: "/dashboard/wallet" },
   { label: "Referrals", href: "/dashboard/referrals" },
   { label: "Leaderboard", href: "/dashboard/leaderboard" },
-  { label: "Benefits", href: "/dashboard/benefits" },
+  { label: "Rewards", href: "/dashboard/benefits" },
   { label: "Profile", href: "/dashboard/profile" },
 ] as const;
 

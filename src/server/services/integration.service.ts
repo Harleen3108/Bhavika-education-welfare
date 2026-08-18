@@ -1,13 +1,13 @@
 import "server-only";
-import { randomUUID } from "crypto";
 import { dbConnect } from "@/server/db/connect";
 import { IntegrationTransaction, Wallet } from "@/server/models";
 import { IntegrationStatus, PointSource, TransactionType } from "@/lib/enums";
 import { env } from "@/lib/env";
 import { DomainError } from "@/server/errors";
+import { rateLimit } from "@/server/rate-limit";
 import { getSettings } from "./content.service";
 import { creditPoints } from "./wallet.service";
-import { createSignedToken } from "@/server/integrations/signing";
+import { verifyWebhookSignature } from "@/server/integrations/signing";
 
 export type RedemptionState = {
   enabled: boolean;
@@ -68,73 +68,43 @@ export async function getRedemptionState(userId: string): Promise<RedemptionStat
   };
 }
 
-/**
- * Begin a redemption to the external Jai Maa Durga platform.
- *
- * Phase 1: gated OFF by SystemSettings.integration.redemptionEnabled. When
- * enabled (Phase 2), this creates an INITIATED IntegrationTransaction and
- * returns a short-lived SIGNED token carrying only the reference id. Points are
- * NOT debited here — they move only when the external platform confirms via the
- * server-to-server webhook (exactly-once, idempotency-keyed on the reference).
- */
-export async function initiateRedemption(
-  userId: string,
-  points: number,
-): Promise<{ token: string; redirectUrl: string; referenceId: string }> {
-  await dbConnect();
-  const settings = await getSettings();
+/* ========================================================================== */
+/*                          RETIRED: initiateRedemption                       */
+/* ========================================================================== */
 
-  if (!settings.integration.redemptionEnabled) {
-    throw new DomainError("Benefit redemption isn't available yet. Coming soon!", 403, "REDEMPTION_DISABLED");
-  }
-  if (!env.JMD_INTEGRATION_URL || !env.JMD_INTEGRATION_SECRET) {
-    throw new DomainError("Redemption is not fully configured yet.", 503, "NOT_CONFIGURED");
-  }
+/*
+  `initiateRedemption` USED TO LIVE HERE AND HAS BEEN DELETED ON PURPOSE.
 
-  // Every rule is re-checked here against live settings. The client is shown the
-  // same numbers, but it is never the authority on them.
-  const { minRedeemPoints, redeemStepPoints } = settings.integration;
+  It read the member's balance, wrote an INITIATED IntegrationTransaction and
+  redirected the member to the partner store with a signed token. The points
+  were debited only later, when the store called the confirmation webhook.
 
-  if (!Number.isInteger(points) || points <= 0) {
-    throw new DomainError("Enter a whole number of points.", 400, "INVALID_AMOUNT");
-  }
-  if (points < minRedeemPoints) {
-    throw new DomainError(
-      `You need at least ${minRedeemPoints.toLocaleString("en-IN")} points to redeem.`,
-      400,
-      "MIN_REDEEM",
-    );
-  }
-  if (points % redeemStepPoints !== 0) {
-    throw new DomainError(
-      `Redeem in multiples of ${redeemStepPoints.toLocaleString("en-IN")} points.`,
-      400,
-      "STEP_REDEEM",
-    );
-  }
+  Between those two moments the points were still in the wallet. Ten tabs meant
+  ten passes of the same balance check, ten reference ids, ten confirmations
+  under ten distinct idempotency keys, and a wallet at -45,000 points on a
+  5,000-point balance. No amount of care at the callback could close that: the
+  check and the debit were in different requests, minutes apart.
 
-  const wallet = await Wallet.findOne({ user: userId }).lean();
-  if (!wallet || wallet.totalBalance < points) {
-    throw new DomainError("You don't have enough points for this redemption.", 400, "INSUFFICIENT");
-  }
+  Redemption now issues a coupon instead (`coupon.service.ts`), where the
+  balance check, the debit and the coupon insert share ONE Mongo transaction, so
+  the window does not exist. Deleting this function rather than disabling it is
+  deliberate — a disabled code path is a code path someone re-enables.
 
-  const referenceId = randomUUID();
-  await IntegrationTransaction.create({
-    user: userId,
-    referenceId,
-    pointsRequested: points,
-    status: IntegrationStatus.INITIATED,
-  });
-
-  // Signed, short-lived, carries only the reference id (no balances in the URL).
-  const token = createSignedToken({ ref: referenceId, sub: userId }, 300);
-  const redirectUrl = `${env.JMD_INTEGRATION_URL}?token=${encodeURIComponent(token)}`;
-
-  return { token, redirectUrl, referenceId };
-}
+  `confirmRedemption` below is KEPT. Nothing can create an INITIATED row any
+  more, so it can only ever act on history that already exists, and the
+  IntegrationTransaction collection is the audit trail for that history.
+*/
 
 /**
  * Confirm a redemption from the external platform's server-to-server webhook.
+ *
+ * LEGACY / INERT. With `initiateRedemption` gone nothing creates INITIATED
+ * transactions, so in practice this now has nothing to confirm. It stays wired
+ * to `/api/integration/webhook` so that any INITIATED row written before the
+ * cutover can still be settled honestly instead of being stranded, and so the
+ * audit history remains readable. New integrations must use the coupon
+ * endpoints under `/api/integration/coupons/*`.
+ *
  * Idempotent: the wallet debit is keyed on the reference id, so replays never
  * double-debit. (Signature verification happens at the route layer.)
  */
@@ -165,4 +135,155 @@ export async function confirmRedemption(
   await txn.save();
 
   return { ok: true };
+}
+
+/* ========================================================================== */
+/*                     Partner store API — request security                   */
+/* ========================================================================== */
+
+/**
+ * Headers the Jai Maa Durga store sends on every coupon call.
+ *
+ * The signature header name matches the one the existing webhook already uses,
+ * so the store implements one signing routine. The SIGNING STRING differs and
+ * is documented in `docs/JAI_MAA_DURGA_INTEGRATION.md`: the coupon endpoints
+ * sign `<timestamp>.<rawBody>`, not the body alone, because a signature over
+ * the body alone is replayable forever.
+ */
+export const STORE_SIGNATURE_HEADER = "x-jmd-signature";
+export const STORE_TIMESTAMP_HEADER = "x-jmd-timestamp";
+
+/**
+ * How far a request's timestamp may sit from our clock, in seconds.
+ *
+ * Five minutes each way. Generous enough for an unsynchronised till in a shop
+ * with intermittent power, tight enough that a captured request is useless by
+ * the time it is worth replaying. Future timestamps are rejected too — a clock
+ * running fast is a clock, a clock running years fast is an attacker extending
+ * their own window.
+ */
+export const STORE_TIMESTAMP_TOLERANCE_SECONDS = 300;
+
+/**
+ * A signed request body is a coupon code and an order reference. Anything
+ * larger is not a coupon call, and hashing it would be work an unauthenticated
+ * caller chose for us.
+ */
+const MAX_STORE_BODY_BYTES = 2048;
+
+/**
+ * Per-caller budgets for the store endpoints.
+ *
+ * Deliberately NOT in `lib/constants.ts` RATE_LIMITS: those are the public,
+ * human-facing buckets (a person filling a form). These are one machine talking
+ * to another, they are part of the published integration contract, and the
+ * penalty below only makes sense next to the code that applies it.
+ *
+ * `unknownCodeCost` is the anti-enumeration control. A lookup that finds NO
+ * coupon spends this many units instead of one, so a caller grinding through
+ * guesses exhausts the bucket four times faster than a till checking real
+ * coupons. Once the bucket is empty EVERY request from that caller is refused —
+ * including one carrying a real code — so there is no "429 means wrong, 200
+ * means right" oracle to read once the throttle bites.
+ */
+export const STORE_API_RATE = {
+  validate: { limit: 60, windowSeconds: 60 },
+  redeem: { limit: 20, windowSeconds: 60 },
+  unknownCodeCost: 4,
+} as const;
+
+export type StoreRateBucket = { limit: number; windowSeconds: number };
+
+/**
+ * Charge the extra cost of a code that matched no coupon.
+ *
+ * The request already spent one unit on the way in, so only the remainder is
+ * charged here. The result is ignored on purpose: the caller has already been
+ * answered for THIS request, and refusing it retroactively would tell them
+ * their guess was wrong. The bite lands on their next request, which is refused
+ * whatever it contains.
+ */
+export async function chargeUnknownCode(bucketKey: string, bucket: StoreRateBucket): Promise<void> {
+  for (let i = 1; i < STORE_API_RATE.unknownCodeCost; i++) {
+    await rateLimit(bucketKey, bucket.limit, bucket.windowSeconds);
+  }
+}
+
+export type SignedStoreRequest = {
+  /** The exact bytes that were signed. */
+  raw: string;
+  /** `raw` parsed as JSON; still unvalidated — hand it to a Zod schema. */
+  body: unknown;
+};
+
+/**
+ * Authenticate a server-to-server call from the partner store.
+ *
+ * Throws `DomainError`, which the `handle()` wrapper turns into the same JSON
+ * shape for every endpoint — so validate and redeem are indistinguishable in
+ * how they refuse a bad caller, and neither reveals whether the code inside the
+ * body meant anything.
+ *
+ * Order matters: the cheap header checks run before we read the body, and the
+ * signature is verified before the JSON is parsed. An unauthenticated caller
+ * never reaches a parser.
+ */
+export async function requireSignedStoreRequest(
+  req: Request,
+  nowMs = Date.now(),
+): Promise<SignedStoreRequest> {
+  // The signing helper falls back to AUTH_SECRET when the integration secret is
+  // unset, which is fine for a dormant Phase-1 endpoint but must never be the
+  // key guarding money. Without a dedicated secret, these endpoints are closed.
+  if (!env.JMD_INTEGRATION_SECRET) {
+    throw new DomainError(
+      "The coupon integration is not configured on this environment.",
+      503,
+      "NOT_CONFIGURED",
+    );
+  }
+
+  const signature = req.headers.get(STORE_SIGNATURE_HEADER) ?? "";
+  const timestamp = req.headers.get(STORE_TIMESTAMP_HEADER) ?? "";
+  if (!signature || !timestamp) {
+    throw new DomainError("A signed request is required.", 401, "MISSING_SIGNATURE");
+  }
+
+  const sentAtSeconds = Number(timestamp);
+  if (!Number.isInteger(sentAtSeconds)) {
+    throw new DomainError(
+      "The request timestamp must be whole Unix seconds.",
+      401,
+      "BAD_TIMESTAMP",
+    );
+  }
+  const skew = Math.abs(Math.floor(nowMs / 1000) - sentAtSeconds);
+  if (skew > STORE_TIMESTAMP_TOLERANCE_SECONDS) {
+    throw new DomainError(
+      "The request timestamp is outside the accepted window.",
+      401,
+      "STALE_REQUEST",
+    );
+  }
+
+  const raw = await req.text();
+  if (Buffer.byteLength(raw, "utf8") > MAX_STORE_BODY_BYTES) {
+    throw new DomainError("That request body is too large.", 413, "PAYLOAD_TOO_LARGE");
+  }
+
+  // Signed over the timestamp STRING exactly as it arrived, not the parsed
+  // number: "1755500000" and "0001755500000" are the same integer and would
+  // otherwise both satisfy one signature.
+  if (!verifyWebhookSignature(`${timestamp}.${raw}`, signature)) {
+    throw new DomainError("The request signature did not match.", 401, "BAD_SIGNATURE");
+  }
+
+  let body: unknown;
+  try {
+    body = JSON.parse(raw || "{}");
+  } catch {
+    throw new DomainError("The request body must be valid JSON.", 400, "BAD_JSON");
+  }
+
+  return { raw, body };
 }

@@ -99,12 +99,23 @@ function redemptionIssues(v: Integration): string[] {
   const min = v.minRedeemPoints;
   const rate = v.pointsPerRupee;
   const step = v.redeemStepPoints;
+  const days = v.couponValidityDays;
   const whole = (n: number) => Number.isInteger(n) && n >= 1;
 
   if (!whole(min)) issues.push("Minimum to redeem must be a whole number of points, at least 1.");
   if (!whole(rate)) issues.push("Points per rupee must be a whole number, at least 1.");
   if (!whole(step)) issues.push("Step size must be a whole number of points, at least 1.");
+  if (!whole(days)) {
+    issues.push("Coupon validity must be a whole number of days, at least 1.");
+  }
   if (issues.length > 0) return issues;
+
+  // Bounded here as well as in the schema: the forfeit warning quotes this
+  // number to members, and "valid 90000 days" is a typo the admin should see
+  // caught while typing rather than as a server rejection after Save.
+  if (days > 3650) {
+    issues.push("A coupon cannot stay valid for longer than 3,650 days (10 years).");
+  }
 
   if (step > min) {
     issues.push(
@@ -167,10 +178,12 @@ function RedemptionPreview({ v }: { v: Integration }) {
     <div className="rounded-xl border border-accent-200 bg-accent-50/60 p-4">
       <p className="type-label text-accent-700">What members will see</p>
       <p className="mt-2 text-lg font-bold text-ink-900">
-        {formatPoints(v.minRedeemPoints)} points = {rupees(thresholdValue)}
+        {formatPoints(v.minRedeemPoints)} points = a {rupees(thresholdValue)} coupon, valid{" "}
+        {formatPoints(v.couponValidityDays)} days
       </p>
       <Hi className="mt-0.5 block text-ink-700">
-        {formatPoints(v.minRedeemPoints)} पॉइंट्स = {rupees(thresholdValue)}
+        {formatPoints(v.minRedeemPoints)} पॉइंट्स = {rupees(thresholdValue)} का कूपन,{" "}
+        {formatPoints(v.couponValidityDays)} दिन तक मान्य
       </Hi>
       <p className="mt-2 text-sm text-ink-700">
         Redeem in steps of {formatPoints(v.redeemStepPoints)} ({rupees(stepValue)}) ·{" "}
@@ -179,6 +192,25 @@ function RedemptionPreview({ v }: { v: Integration }) {
       <p className="mt-2 text-sm text-ink-600">
         Valid amounts: {examples} … and so on.
       </p>
+
+      {/*
+        The consequence, not just the rule. Points are debited the instant a
+        coupon is created and are never returned, so shortening this window
+        forfeits more of what members earned — the admin should be reading that
+        sentence while they type the number, not discovering it in a complaint.
+      */}
+      <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+        <p className="text-sm font-semibold text-amber-900">
+          Unused coupons expire and the points are NOT returned.
+        </p>
+        <Hi className="mt-1 block text-amber-900">
+          कूपन इस्तेमाल न होने पर वह खत्म हो जाता है और पॉइंट्स वापस नहीं मिलते।
+        </Hi>
+        <p className="mt-2 text-xs text-amber-900">
+          Members must be shown this before they generate a coupon.
+        </p>
+      </div>
+
       {!v.redemptionEnabled && (
         <p className="mt-3 border-t border-accent-200 pt-3 text-sm text-ink-600">
           Redemption is switched off, so no one can redeem yet — but members still see these
@@ -323,6 +355,14 @@ export function SettingsForm({ initial }: { initial: Settings }) {
                 max={1000000}
                 onChange={(n) => setIntegration({ redeemStepPoints: n })}
               />
+              <Num
+                label="Coupon validity (days)"
+                hint="How long a member has to spend a coupon. After this it lapses and the points are gone."
+                value={v.integration.couponValidityDays}
+                min={1}
+                max={3650}
+                onChange={(n) => setIntegration({ couponValidityDays: n })}
+              />
             </div>
 
             <RedemptionPreview v={v.integration} />
@@ -330,14 +370,15 @@ export function SettingsForm({ initial }: { initial: Settings }) {
 
           <div className="border-t border-ink-200 pt-4">
             <Check
-              label="Enable redemption (hand-off to Jai Maa Durga)"
+              label="Enable coupon redemption (Jai Maa Durga)"
               checked={v.integration.redemptionEnabled}
               onChange={(b) => setIntegration({ redemptionEnabled: b })}
             />
             <p className="text-sm text-ink-500">
-              Turn this on only once the Jai Maa Durga store is live and the secure
-              server-to-server integration is configured. While it is off, members see their
-              points and what they are worth, with no redemption button.
+              Turn this on only once the Jai Maa Durga store can accept a Bhavika coupon code.
+              While it is off, members see their points and what they are worth, with no button to
+              generate a coupon. Issuing before the store is ready would take a family&apos;s points
+              for a code no shopkeeper can honour.
             </p>
           </div>
         </CardBody>

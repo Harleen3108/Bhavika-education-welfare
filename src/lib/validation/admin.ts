@@ -216,6 +216,21 @@ const integrationSettingsSchema = z
       .int("Use a whole number of points.")
       .min(1, "The step must be at least 1 point.")
       .max(1000000, "That step is larger than any realistic redemption."),
+    /*
+      How long an issued coupon stays usable.
+
+      Not a cosmetic number: the points are debited the instant the coupon is
+      created and are NOT returned when it lapses, so this is the entire window
+      a family has to spend what they earned. Lowering it forfeits more points.
+      Bounded at ten years because a coupon that never expires is a liability
+      that never closes, and at one day because zero would mint coupons that are
+      dead before the member reaches the shop.
+    */
+    couponValidityDays: z.coerce
+      .number()
+      .int("Use a whole number of days.")
+      .min(1, "A coupon must be valid for at least one day.")
+      .max(3650, "Ten years is longer than any coupon should stay redeemable."),
   })
   .refine((d) => d.minRedeemPoints < 1 || d.redeemStepPoints <= d.minRedeemPoints, {
     message: "The step cannot be larger than the minimum to redeem.",
