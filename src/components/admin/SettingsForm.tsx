@@ -136,7 +136,11 @@ function RedemptionPreview({ v }: { v: Integration }) {
 
   if (issues.length > 0) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+      /* role="alert": this panel and the disabled Save button are the only
+         signals that a combination was refused, and a disabled button is out
+         of the tab order — without the live region a screen-reader admin types
+         a bad step, hears nothing, and finds no way to reach the reason. */
+      <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-red-800">
           <AlertTriangle size={16} aria-hidden /> These numbers cannot be saved
         </p>
