@@ -182,13 +182,21 @@ export default async function HomePage() {
             {/* Above the fold, so this stays on the CSS entrance rather than a
                 GSAP Reveal — no chance of a re-animation flash on first paint. */}
             <div className="animate-fade-up">
-              <span className="inline-flex flex-wrap items-center gap-2 rounded-full border border-brand-200 bg-surface/80 px-4 py-2 text-sm font-medium text-ink-700 shadow-sm">
+              {/*
+                rounded-full only once the line actually fits. On a phone this
+                wraps to two or three lines, and a fully-rounded tall box reads
+                as a blob with the status dot floating between the lines rather
+                than marking the start of the sentence.
+              */}
+              <span className="inline-flex flex-wrap items-start gap-x-2 gap-y-0.5 rounded-2xl border border-brand-200 bg-surface/80 px-3.5 py-2 text-[0.8125rem] font-medium text-ink-700 shadow-sm sm:items-center sm:rounded-full sm:px-4 sm:text-sm">
                 <span
                   aria-hidden
-                  className="h-2 w-2 shrink-0 rounded-full bg-brand-500"
+                  className="mt-[0.45rem] h-2 w-2 shrink-0 rounded-full bg-brand-500 sm:mt-0"
                 />
-                Registered Non-Profit · Education for every child
-                <Hi inline>शिक्षा हर बच्चे का अधिकार</Hi>
+                <span className="min-w-0">
+                  Registered Non-Profit · Education for every child{" "}
+                  <Hi inline>शिक्षा हर बच्चे का अधिकार</Hi>
+                </span>
               </span>
 
               <h1 className="type-h1 mt-6">
