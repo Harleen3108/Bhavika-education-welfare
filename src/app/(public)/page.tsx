@@ -40,6 +40,9 @@ import {
   getPartners,
 } from "@/server/services/content.service";
 import { getHomePageData } from "@/server/services/site-data.service";
+import { getLeaderboard } from "@/server/services/leaderboard.service";
+import { LeaderboardPeriod } from "@/lib/enums";
+import { Avatar } from "@/components/ui/Avatar";
 
 // ISR: everything on this page is read through services that fall back to the
 // compiled marketing copy, revalidated every 5 minutes. The page renders in
@@ -97,7 +100,7 @@ function StatValue({ value, className }: { value: string; className?: string }) 
 }
 
 export default async function HomePage() {
-  const [home, galleryPreview, testimonialsPreview, partners] = await Promise.all([
+  const [home, galleryPreview, testimonialsPreview, partners, board] = await Promise.all([
     getHomePageData(),
     getGallery().then((g) => g.slice(0, 8)),
     // Six, not four: the voices arrive in three registers — English, Hinglish
@@ -105,9 +108,39 @@ export default async function HomePage() {
     // homepage entirely, which is the half of the audience the Hindi is for.
     getTestimonials(6),
     getPartners(),
+    // Real weekly rankings for the preview card. Never throws — an unreachable
+    // database returns an empty board and the card falls back to the sample.
+    getLeaderboard(LeaderboardPeriod.WEEKLY, undefined, 5).catch(() => null),
   ]);
 
   const { impact, programs, pillars, faqs, founder, counts } = home;
+
+  /*
+    The preview shows real rankings the moment anyone has scored this week, and
+    the illustrative sample before that — a brand-new site with an empty board
+    would otherwise present as a dead product on its own homepage.
+
+    `boardIsLive` gates the "Live" badge: labelling the sample as live would be
+    a straightforward lie to a visitor.
+  */
+  const boardIsLive = Boolean(board && board.rows.length > 0);
+  const leaderRows = boardIsLive
+    ? board!.rows.map((r) => ({
+        rank: r.rank,
+        name: r.name,
+        points: r.points,
+        avatarUrl: r.avatarUrl || undefined,
+        meta: undefined as string | undefined,
+        delta: undefined as string | undefined,
+      }))
+    : LEADERBOARD_PREVIEW.map((r) => ({
+        rank: r.rank,
+        name: r.name,
+        points: r.points,
+        avatarUrl: undefined as string | undefined,
+        meta: r.meta as string | undefined,
+        delta: r.delta as string | undefined,
+      }));
 
   // Secondary platform numbers, shown only once they are real. A brand-new
   // deployment must not advertise "0 quizzes played".
@@ -591,17 +624,23 @@ export default async function HomePage() {
                     <p className="font-semibold text-ink-900">Top performers</p>
                     <Hi className="block text-sm text-ink-500">शीर्ष प्रतिभागी</Hi>
                   </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-50 px-3 py-1 text-xs font-semibold text-accent-700">
-                    <span
-                      aria-hidden
-                      className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent-500"
-                    />
-                    Live
-                  </span>
+                  {boardIsLive ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-50 px-3 py-1 text-xs font-semibold text-accent-700">
+                      <span
+                        aria-hidden
+                        className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent-500"
+                      />
+                      Live
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-ink-100 px-3 py-1 text-xs font-semibold text-ink-600">
+                      Sample
+                    </span>
+                  )}
                 </div>
 
                 <ul className="divide-y divide-ink-100">
-                  {LEADERBOARD_PREVIEW.map((r) => {
+                  {leaderRows.map((r) => {
                     const medal = ["🥇", "🥈", "🥉"][r.rank - 1];
                     return (
                       <li
@@ -618,24 +657,41 @@ export default async function HomePage() {
                         >
                           {medal ?? r.rank}
                         </span>
+                        {boardIsLive && (
+                          <Avatar src={r.avatarUrl} name={r.name} size={32} />
+                        )}
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-semibold text-ink-900">
                             {r.name}
                           </span>
-                          <span className="block text-xs text-ink-500">{r.meta}</span>
+                          {r.meta && (
+                            <span className="block text-xs text-ink-500">{r.meta}</span>
+                          )}
                         </span>
                         <span className="text-right">
                           <span className="font-display block font-bold text-ink-900">
                             {r.points}
                           </span>
-                          <span className="block text-xs font-semibold text-accent-600">
-                            {r.delta}
-                          </span>
+                          {r.delta && (
+                            <span className="block text-xs font-semibold text-accent-600">
+                              {r.delta}
+                            </span>
+                          )}
                         </span>
                       </li>
                     );
                   })}
                 </ul>
+
+                {!boardIsLive && (
+                  <p className="border-t border-ink-100 px-5 py-3 text-xs text-ink-500">
+                    An example board — real names appear here as soon as students
+                    start playing.
+                    <Hi className="mt-0.5 block">
+                      यह एक उदाहरण है — खेल शुरू होते ही असली नाम यहाँ दिखेंगे।
+                    </Hi>
+                  </p>
+                )}
               </Card>
             </Reveal>
           </div>

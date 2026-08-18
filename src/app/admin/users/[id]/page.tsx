@@ -100,6 +100,7 @@ export default async function AdminUserDetailPage({
                 <UserActions
                   userId={user.id}
                   status={user.status}
+                  emailVerified={user.emailVerified}
                   member={{
                     id: user.id,
                     name: user.name,

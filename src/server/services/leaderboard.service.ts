@@ -197,7 +197,16 @@ async function timeBoxed(
     {
       $facet: {
         top: [{ $sort: { points: -1, _id: 1 } }, { $limit: limit }],
-        me: userId ? [{ $match: { _id: new Types.ObjectId(userId) } }] : [{ $limit: 0 }],
+        /*
+          `$limit: 0` is rejected by MongoDB ("the limit must be positive"), and
+          this branch runs for every signed-out visitor — so the public
+          leaderboard and the homepage preview threw for exactly the audience
+          they exist to convince. An impossible $match is the correct way to
+          spell "return nothing" inside a $facet.
+        */
+        me: userId
+          ? [{ $match: { _id: new Types.ObjectId(userId) } }]
+          : [{ $match: { _id: { $exists: false } } }],
       },
     },
   ]);

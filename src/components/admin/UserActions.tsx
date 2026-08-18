@@ -2,14 +2,14 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Ban, CheckCircle2, Coins, PauseCircle } from "lucide-react";
+import { Ban, CheckCircle2, Coins, MailCheck, PauseCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Textarea, Label } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { Alert } from "@/components/ui/States";
 import { WalletAdjustForm, type AdjustMember } from "@/components/admin/WalletAdjustForm";
-import { setUserStatus } from "@/server/actions/users";
+import { setUserStatus, verifyUserEmail } from "@/server/actions/users";
 import { AccountStatus } from "@/lib/enums";
 
 type Status = (typeof AccountStatus)[keyof typeof AccountStatus];
@@ -33,18 +33,46 @@ const STATUS_COPY: Record<string, { verb: string; consequence: string; danger?: 
 export function UserActions({
   userId,
   status,
+  emailVerified,
   member,
 }: {
   userId: string;
   status: string;
+  emailVerified: boolean;
   member: AdjustMember;
 }) {
   const router = useRouter();
   const [pendingStatus, setPendingStatus] = React.useState<Status | null>(null);
   const [adjustOpen, setAdjustOpen] = React.useState(false);
+  const [verifying, setVerifying] = React.useState(false);
+
+  /*
+    For a member who cannot receive our mail at all and would otherwise sit at
+    PENDING forever. Goes through the same path as a real verification, so the
+    referrer who invited them is still paid.
+  */
+  const verify = async () => {
+    setVerifying(true);
+    try {
+      const res = await verifyUserEmail(userId);
+      if (res.ok) {
+        toast.success("Email marked verified. The member can sign in now.");
+        router.refresh();
+      } else {
+        toast.error(res.error || "Could not verify this member.");
+      }
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   return (
     <div className="flex flex-wrap gap-2">
+      {!emailVerified && (
+        <Button size="sm" variant="secondary" onClick={verify} loading={verifying}>
+          <MailCheck size={16} /> Mark email verified
+        </Button>
+      )}
       {status !== AccountStatus.ACTIVE && (
         <Button
           size="sm"

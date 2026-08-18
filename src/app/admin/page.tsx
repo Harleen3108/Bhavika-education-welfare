@@ -6,10 +6,21 @@ import { listAuditLogs } from "@/server/services/audit.service";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardBody, CardTitle } from "@/components/ui/Card";
+import { auditLabel, auditGroup, type AuditGroup } from "@/lib/audit-labels";
 import { formatDateTime } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Admin", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
+
+/** A quiet colour cue so money and member actions stand out when scanning. */
+const GROUP_DOT: Record<AuditGroup, string> = {
+  member: "bg-brand-500",
+  money: "bg-accent-500",
+  quiz: "bg-amber-glow-500",
+  content: "bg-ink-300",
+  settings: "bg-rose-glow-500",
+  other: "bg-ink-300",
+};
 
 export default async function AdminDashboardPage() {
   const [stats, audits] = await Promise.all([getAdminStats(), listAuditLogs(12)]);
@@ -38,13 +49,19 @@ export default async function AdminDashboardPage() {
             ) : (
               <ul className="mt-4 divide-y divide-ink-100">
                 {audits.map((a) => (
-                  <li key={a.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-ink-800">{a.action}</p>
-                      <p className="text-xs text-ink-500">
-                        by {a.admin}
-                        {a.reason ? ` — ${a.reason}` : ""}
-                      </p>
+                  <li key={a.id} className="flex items-start justify-between gap-3 py-2.5 text-sm">
+                    <div className="flex min-w-0 items-start gap-2.5">
+                      <span
+                        aria-hidden
+                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${GROUP_DOT[auditGroup(a.action)]}`}
+                      />
+                      <div className="min-w-0">
+                        <p className="font-medium text-ink-800">{auditLabel(a.action)}</p>
+                        <p className="text-xs text-ink-500">
+                          by {a.admin}
+                          {a.reason ? ` — ${a.reason}` : ""}
+                        </p>
+                      </div>
                     </div>
                     <span className="shrink-0 text-xs text-ink-400">{formatDateTime(a.createdAt)}</span>
                   </li>
