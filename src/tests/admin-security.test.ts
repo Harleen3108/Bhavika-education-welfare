@@ -6,6 +6,7 @@ import { makeUser } from "./helpers";
 // The lockout email is not under test and must not reach the network.
 vi.mock("@/server/services/email.service", () => ({
   sendAdminLockoutEmail: vi.fn(async () => ({ ok: true, provider: "console" })),
+  sendMemberLockoutEmail: vi.fn(async () => ({ ok: true, provider: "console" })),
   sendVerificationEmail: vi.fn(async () => ({ ok: true, provider: "console" })),
   sendPasswordResetEmail: vi.fn(async () => ({ ok: true, provider: "console" })),
   sendReferralJoinedEmail: vi.fn(async () => ({ ok: true, provider: "console" })),
@@ -17,6 +18,7 @@ const {
   assertNotLocked,
   clearAdminLockout,
   lockoutMinutesFor,
+  failureLimitFor,
   MAX_FAILURES,
 } = await import("@/server/services/admin-security.service");
 
@@ -143,5 +145,70 @@ describe("admin user fixture", () => {
     const u = await makeUser({ role: UserRole.ADMIN });
     const found = await User.findById(u._id).lean();
     expect(found?.role).toBe(UserRole.ADMIN);
+  });
+});
+
+describe("member lockout", () => {
+  let email: string;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const u = await makeUser({ role: UserRole.USER });
+    email = u.email;
+  });
+
+  it("gives members ten attempts, not five", async () => {
+    expect(failureLimitFor(UserRole.USER)).toBe(10);
+    expect(failureLimitFor(UserRole.ADMIN)).toBe(5);
+  });
+
+  it("does not lock a member at the admin threshold", async () => {
+    for (let i = 0; i < 5; i += 1) {
+      await recordAdminAttempt({
+        req: req(),
+        email,
+        role: UserRole.USER,
+        stage: "SESSION",
+        success: false,
+      });
+    }
+    // Five failures ends an admin session; a member is still mid-way.
+    expect((await getLockState(email, UserRole.USER)).locked).toBe(false);
+  });
+
+  it("locks a member on the tenth failure and emails them", async () => {
+    const { sendMemberLockoutEmail, sendAdminLockoutEmail } = await import(
+      "@/server/services/email.service"
+    );
+    for (let i = 0; i < 10; i += 1) {
+      await recordAdminAttempt({
+        req: req(),
+        email,
+        role: UserRole.USER,
+        stage: "SESSION",
+        success: false,
+      });
+    }
+    expect((await getLockState(email, UserRole.USER)).locked).toBe(true);
+    // The member gets the "change your password" mail, never the admin one.
+    expect(sendMemberLockoutEmail).toHaveBeenCalledTimes(1);
+    expect(sendAdminLockoutEmail).not.toHaveBeenCalled();
+    expect(vi.mocked(sendMemberLockoutEmail).mock.calls[0][0]).toBe(email);
+  });
+
+  it("never mails a member warning to an address with no account", async () => {
+    const { sendMemberLockoutEmail } = await import("@/server/services/email.service");
+    const stranger = "ghost@test.dev";
+    for (let i = 0; i < 10; i += 1) {
+      await recordAdminAttempt({
+        req: req(),
+        email: stranger,
+        role: UserRole.USER,
+        stage: "SESSION",
+        success: false,
+      });
+    }
+    expect((await getLockState(stranger, UserRole.USER)).locked).toBe(true);
+    expect(sendMemberLockoutEmail).not.toHaveBeenCalled();
   });
 });

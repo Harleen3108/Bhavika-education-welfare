@@ -37,6 +37,24 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+/**
+ * Device position reported by the browser during an admin sign-in.
+ *
+ * Every field is optional and bounded. These coordinates come from the client
+ * and are recorded as a claim, never trusted as a fact — the bounds only stop
+ * nonsense reaching the database.
+ */
+export const gpsFixSchema = z.object({
+  gpsLatitude: z.coerce.number().min(-90).max(90).nullable().optional(),
+  gpsLongitude: z.coerce.number().min(-180).max(180).nullable().optional(),
+  gpsAccuracy: z.coerce.number().min(0).max(100_000).nullable().optional(),
+  gpsStatus: z
+    .enum(["granted", "denied", "unavailable", "timeout", "unsupported"])
+    .nullable()
+    .optional(),
+});
+export type GpsFixInput = z.infer<typeof gpsFixSchema>;
+
 /* ---- Multi-step admin login ---- */
 
 /** Step 1 — identify the admin by email. */
@@ -46,10 +64,12 @@ export const adminLookupSchema = z.object({
 export type AdminLookupInput = z.infer<typeof adminLookupSchema>;
 
 /** Step 2 — verify the admin's password. */
-export const adminPasswordSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
-  password: z.string().min(1, "Enter your password."),
-});
+export const adminPasswordSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().email("Enter a valid email address."),
+    password: z.string().min(1, "Enter your password."),
+  })
+  .extend(gpsFixSchema.shape);
 export type AdminPasswordInput = z.infer<typeof adminPasswordSchema>;
 
 /** Step 3 — the admin access code (validated server-side against ADMIN_ACCESS_CODE). */

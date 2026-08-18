@@ -9,8 +9,10 @@ import {
   getSecurityOverview,
   LOCKOUT_LADDER,
   MAX_FAILURES,
+  MAX_FAILURES_MEMBER,
 } from "@/server/services/admin-security.service";
 import { formatDateTime } from "@/lib/utils";
+import { describeGps } from "@/lib/geolocate";
 
 export const metadata: Metadata = {
   title: "Security",
@@ -26,7 +28,7 @@ export default async function AdminSecurityPage() {
     <>
       <PageHeader
         title="Security"
-        description="Admin sign-in attempts, lockouts and where they came from."
+        description="Sign-in attempts, lockouts and where they came from."
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -40,14 +42,17 @@ export default async function AdminSecurityPage() {
         <CardBody>
           <CardTitle>Locked accounts</CardTitle>
           <p className="mt-1 text-sm text-ink-500">
-            {MAX_FAILURES} failed attempts locks an admin account. Each further round
-            lasts twice as long — {LOCKOUT_LADDER.join(", ")} minutes — and the level
-            only resets on a successful sign-in.
+            {MAX_FAILURES} failed attempts locks an admin account, {MAX_FAILURES_MEMBER} a
+            member account. Each further round lasts twice as long —{" "}
+            {LOCKOUT_LADDER.join(", ")} minutes — and the level only resets on a
+            successful sign-in. Members get more rope on purpose: anyone who knows an
+            address can burn another person&apos;s attempts, so a tight limit there
+            locks a child out rather than an attacker.
           </p>
 
           {locks.length === 0 ? (
             <p className="py-6 text-center text-sm text-ink-500">
-              No admin account is locked or has failed attempts on record.
+              No account is locked or has failed attempts on record.
             </p>
           ) : (
             <ul className="mt-4 divide-y divide-ink-100">
@@ -86,12 +91,15 @@ export default async function AdminSecurityPage() {
       {/* Attempt log */}
       <Card className="mt-6">
         <CardBody>
-          <CardTitle>Recent admin sign-in attempts</CardTitle>
+          <CardTitle>Recent sign-in attempts</CardTitle>
           <p className="mt-1 text-sm text-ink-500">
-            Location is estimated from the network address — it points to a city or an
-            internet provider&apos;s hub, never an exact place. A VPN flag means the
-            address belongs to a hosting network, which is a reason to look closer
-            rather than proof of anything.
+            Two readings per attempt, deliberately kept apart. The <strong>GPS pin</strong>
+            is metres-accurate but comes from the browser, so it can be forged and only
+            exists when the person allowed it. The <strong>network estimate</strong> is
+            only city-accurate but comes from the connection itself. Trust neither alone —
+            it is the disagreement between them that is worth investigating. A VPN flag
+            means the address belongs to a hosting network: a reason to look closer,
+            not proof.
           </p>
 
           {attempts.length === 0 ? (
@@ -136,16 +144,39 @@ export default async function AdminSecurityPage() {
                       {a.location}
                       {a.org ? ` · ${a.org}` : ""}
                     </p>
-                    {a.latitude !== null && a.longitude !== null && (
-                      <a
-                        href={`https://www.openstreetmap.org/?mlat=${a.latitude}&mlon=${a.longitude}#map=11/${a.latitude}/${a.longitude}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-0.5 inline-block text-xs font-semibold text-brand-700 hover:text-brand-800"
-                      >
-                        View approximate area →
-                      </a>
-                    )}
+                    {/*
+                      Both readings are shown, never merged. The GPS pin is
+                      precise but client-supplied and therefore forgeable; the
+                      network estimate is coarse but comes from the connection
+                      itself. Disagreement between them is the signal.
+                    */}
+                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                      {a.gpsStatus === "granted" &&
+                      a.gpsLatitude !== null &&
+                      a.gpsLongitude !== null ? (
+                        <a
+                          href={`https://www.openstreetmap.org/?mlat=${a.gpsLatitude}&mlon=${a.gpsLongitude}#map=17/${a.gpsLatitude}/${a.gpsLongitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded-full bg-accent-50 px-2 py-0.5 font-semibold text-accent-700 hover:bg-accent-100"
+                        >
+                          <MapPin size={11} /> {describeGps(a)} →
+                        </a>
+                      ) : (
+                        <span className="text-ink-400">{describeGps(a)}</span>
+                      )}
+
+                      {a.latitude !== null && a.longitude !== null && (
+                        <a
+                          href={`https://www.openstreetmap.org/?mlat=${a.latitude}&mlon=${a.longitude}#map=11/${a.latitude}/${a.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-brand-700 hover:text-brand-800"
+                        >
+                          Network estimate →
+                        </a>
+                      )}
+                    </p>
                   </div>
 
                   <span className="shrink-0 text-xs text-ink-400">

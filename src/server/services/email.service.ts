@@ -1,5 +1,5 @@
 import "server-only";
-import { env, emailProvider, isProd } from "@/lib/env";
+import { env, emailProvider, isProd, getAppBaseUrl } from "@/lib/env";
 import { SITE } from "@/lib/constants";
 
 const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
@@ -487,5 +487,102 @@ export async function sendAdminLockoutEmail(
       `${ctx.vpnSuspected ? "The address looks like a VPN or hosting network.\n" : ""}` +
       `Location is an estimate from the IP address, not an exact place.\n` +
       `If this was not you, change your password and admin access code now.`,
+  });
+}
+
+/**
+ * Tell a member that someone has been failing to sign in as them.
+ *
+ * Written for a parent or a child, not an engineer: the point is "this was
+ * probably not you, change your password", not a forensic report. Where the
+ * admin version invites investigation, this one gives one clear instruction.
+ *
+ * The location is described as approximate for the same reason it is in the
+ * admin mail — it comes from the network address and names a city, not a place.
+ */
+export async function sendMemberLockoutEmail(
+  to: string,
+  name: string,
+  ctx: {
+    minutes: number;
+    attempts: number;
+    ip: string;
+    location: string;
+    vpnSuspected: boolean;
+    org: string | null;
+    at: Date;
+  },
+): Promise<SendResult> {
+  const when = ctx.at.toLocaleString("en-IN", { timeZone: SITE.timezone });
+  const resetUrl = `${getAppBaseUrl()}/forgot-password`;
+
+  return send({
+    to,
+    name,
+    subject: `Someone tried to sign in to your account — ${SITE.shortName}`,
+    html: shell({
+      preheader: `${ctx.attempts} wrong passwords on your account. Change your password if this was not you.`,
+      title: "Someone tried to sign in to your account",
+      titleHi: "किसी ने आपके खाते में लॉगिन की कोशिश की",
+      bodyHtml: `
+        <p style="margin:0 0 16px;font-family:${FONT};font-size:15px;line-height:1.65;color:${C.inkMuted}">
+          Hi ${name}, there were <strong>${ctx.attempts} wrong password attempts</strong> on your
+          ${SITE.shortName} account, so we have paused sign-in for
+          <strong>${ctx.minutes} minutes</strong> to keep it safe.
+        </p>
+        <p style="margin:0 0 20px;font-family:${FONT_HI};font-size:14px;line-height:1.7;color:${C.coralDeep}">
+          आपके खाते में ${ctx.attempts} बार गलत पासवर्ड डाला गया, इसलिए हमने ${ctx.minutes} मिनट के लिए
+          लॉगिन रोक दिया है।
+        </p>
+
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 20px;background-color:${C.tint};border:1px solid ${C.tintBorder};border-radius:14px">
+          <tr><td style="padding:16px 18px">
+            <p style="margin:0 0 6px;font-family:${FONT};font-size:13px;color:${C.inkMuted}">
+              <strong>If this was you</strong>, just wait ${ctx.minutes} minutes and try again. If you
+              have forgotten your password, reset it below.
+            </p>
+            <p style="margin:0;font-family:${FONT_HI};font-size:13px;line-height:1.7;color:${C.inkMuted}">
+              अगर यह आप ही थे, तो ${ctx.minutes} मिनट बाद दोबारा कोशिश करें।
+            </p>
+          </td></tr>
+        </table>
+
+        <p style="margin:0 0 8px;font-family:${FONT};font-size:15px;line-height:1.65;color:${C.ink}">
+          <strong>If this was not you, please change your password now.</strong>
+        </p>
+        <p style="margin:0 0 20px;font-family:${FONT_HI};font-size:14px;line-height:1.7;color:${C.coralDeep}">
+          अगर यह आप नहीं थे, तो कृपया अभी अपना पासवर्ड बदल लें।
+        </p>
+
+        <div style="text-align:center;margin:0 0 22px">
+          <a href="${resetUrl}" style="display:inline-block;background-color:${C.coralDeep};background-image:linear-gradient(135deg,${C.gradientFrom} 0%,${C.gradientMid} 55%,${C.gradientTo} 100%);color:#ffffff;text-decoration:none;font-family:${FONT};font-size:15px;font-weight:700;padding:13px 28px;border-radius:9999px">
+            Change my password
+          </a>
+        </div>
+
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 14px">
+          <tr>
+            <td style="padding:6px 0;font-family:${FONT};font-size:13px;color:${C.inkFaint};white-space:nowrap;vertical-align:top">When</td>
+            <td style="padding:6px 0 6px 16px;font-family:${FONT};font-size:14px;font-weight:600;color:${C.ink}">${when}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;font-family:${FONT};font-size:13px;color:${C.inkFaint};white-space:nowrap;vertical-align:top">Approx. location</td>
+            <td style="padding:6px 0 6px 16px;font-family:${FONT};font-size:14px;font-weight:600;color:${C.ink}">${ctx.location}</td>
+          </tr>
+        </table>
+
+        <p style="margin:0;font-family:${FONT};font-size:12px;line-height:1.6;color:${C.inkFaint}">
+          The location is an estimate from the internet address and points to a city,
+          not to a person or an exact place. Your points and rewards are untouched —
+          nobody signed in.
+        </p>`,
+    }),
+    text:
+      `${ctx.attempts} wrong password attempts on your ${SITE.shortName} account. Sign-in is paused for ${ctx.minutes} minutes.\n\n` +
+      `If this was you, wait ${ctx.minutes} minutes and try again.\n` +
+      `If this was NOT you, change your password now: ${resetUrl}\n\n` +
+      `When: ${when}\nApprox. location: ${ctx.location}\n` +
+      `Location is an estimate from the internet address, not an exact place.\n` +
+      `Nobody signed in — your points and rewards are untouched.`,
   });
 }

@@ -6,7 +6,7 @@ import { UserRole } from "@/lib/enums";
 import { DomainError } from "@/server/errors";
 import { getClientIp, hashIp } from "@/server/http/client-ip";
 import { lookupIpIntel, describeLocation } from "./ip-intel.service";
-import { sendAdminLockoutEmail } from "./email.service";
+import { sendAdminLockoutEmail, sendMemberLockoutEmail } from "./email.service";
 
 /**
  * Brute-force protection for the admin panel.
@@ -20,6 +20,22 @@ import { sendAdminLockoutEmail } from "./email.service";
 export const MAX_FAILURES = 5;
 /** Minutes served at each level. The final entry repeats for anything beyond. */
 export const LOCKOUT_LADDER = [5, 10, 20, 40] as const;
+
+/**
+ * Members get twice the rope before the same ladder starts.
+ *
+ * Anyone who knows an address can burn another person's attempts, so a low
+ * threshold on a member account is a denial-of-service against a child rather
+ * than a defence of one. Ten is forgiving of a genuinely forgotten password
+ * while still ending an automated guessing run quickly. Admin accounts keep the
+ * tighter five: there are a handful of them, they hold every wallet on the
+ * platform, and their owners can be unlocked by another admin.
+ */
+export const MAX_FAILURES_MEMBER = 10;
+
+export function failureLimitFor(role: UserRole): number {
+  return role === UserRole.ADMIN ? MAX_FAILURES : MAX_FAILURES_MEMBER;
+}
 
 export function lockoutMinutesFor(level: number): number {
   const i = Math.max(0, Math.min(level, LOCKOUT_LADDER.length) - 1);
@@ -35,7 +51,10 @@ export type LockState = {
 };
 
 /** Read-only check used before doing any password work. */
-export async function getLockState(email: string): Promise<LockState> {
+export async function getLockState(
+  email: string,
+  role: UserRole = UserRole.ADMIN,
+): Promise<LockState> {
   await dbConnect();
   const row = await AdminLockout.findOne({ email: email.toLowerCase() }).lean();
   const until = row?.lockedUntil ?? null;
@@ -47,7 +66,7 @@ export async function getLockState(email: string): Promise<LockState> {
     minutesRemaining: locked
       ? Math.max(1, Math.ceil((until!.getTime() - Date.now()) / 60000))
       : 0,
-    remaining: Math.max(0, MAX_FAILURES - (row?.failedCount ?? 0)),
+    remaining: Math.max(0, failureLimitFor(role) - (row?.failedCount ?? 0)),
   };
 }
 
@@ -63,12 +82,23 @@ export async function assertNotLocked(email: string): Promise<void> {
   }
 }
 
+export type GpsFix = {
+  gpsLatitude?: number | null;
+  gpsLongitude?: number | null;
+  gpsAccuracy?: number | null;
+  gpsStatus?: string | null;
+};
+
 type RecordArgs = {
   req: Request;
   email: string;
   stage: AdminAuthStage;
   success: boolean;
   reason?: string;
+  /** Device position, when the browser gave one. A claim, not a fact. */
+  gps?: GpsFix;
+  /** Defaults to ADMIN so existing call sites keep their tighter threshold. */
+  role?: UserRole;
 };
 
 /**
@@ -83,6 +113,8 @@ export async function recordAdminAttempt({
   stage,
   success,
   reason,
+  gps,
+  role = UserRole.ADMIN,
 }: RecordArgs): Promise<void> {
   try {
     await dbConnect();
@@ -92,6 +124,7 @@ export async function recordAdminAttempt({
 
     await AdminLoginAttempt.create({
       email: lower,
+      role,
       success,
       stage,
       reason: reason ?? null,
@@ -99,6 +132,10 @@ export async function recordAdminAttempt({
       ipHash: hashIp(ip),
       userAgent: req.headers.get("user-agent")?.slice(0, 400) ?? null,
       ...intel,
+      gpsLatitude: gps?.gpsLatitude ?? null,
+      gpsLongitude: gps?.gpsLongitude ?? null,
+      gpsAccuracy: gps?.gpsAccuracy ?? null,
+      gpsStatus: gps?.gpsStatus ?? null,
     });
 
     if (success) {
@@ -109,11 +146,14 @@ export async function recordAdminAttempt({
 
     const row = await AdminLockout.findOneAndUpdate(
       { email: lower },
-      { $inc: { failedCount: 1 }, $set: { lastFailedAt: new Date(), lastIp: ip } },
+      {
+        $inc: { failedCount: 1 },
+        $set: { lastFailedAt: new Date(), lastIp: ip, role },
+      },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );
 
-    if (row.failedCount < MAX_FAILURES) return;
+    if (row.failedCount < failureLimitFor(role)) return;
 
     // Threshold reached: serve the next rung of the ladder and reset the
     // counter so the following five failures escalate again.
@@ -126,7 +166,7 @@ export async function recordAdminAttempt({
       { $set: { level, lockedUntil: until, failedCount: 0, notifiedAt: new Date() } },
     );
 
-    await notifyLockout(lower, { minutes, level, ip, intel });
+    await notifyLockout(lower, { minutes, level, ip, intel, role });
   } catch (e) {
     console.error("[admin-security] failed to record attempt:", e);
   }
@@ -146,22 +186,35 @@ async function notifyLockout(
     level: number;
     ip: string;
     intel: Awaited<ReturnType<typeof lookupIpIntel>>;
+    role: UserRole;
   },
 ): Promise<void> {
-  const admin = await User.findOne({ email, role: UserRole.ADMIN })
+  // Looked up rather than trusted: the address was typed into a login form, and
+  // mailing whatever was typed would turn this into a way to send warnings to
+  // strangers. Only a real account of the expected role is ever written to.
+  const account = await User.findOne({ email, role: ctx.role })
     .select("name email")
     .lean();
-  if (!admin) return;
+  if (!account) return;
 
-  await sendAdminLockoutEmail(admin.email, admin.name, {
+  const payload = {
     minutes: ctx.minutes,
-    attempts: MAX_FAILURES,
+    attempts: failureLimitFor(ctx.role),
     ip: ctx.ip,
     location: describeLocation(ctx.intel),
     vpnSuspected: ctx.intel.vpnSuspected,
     org: ctx.intel.org,
     at: new Date(),
-  }).catch((e: unknown) => console.error("[admin-security] lockout email failed:", e));
+  };
+
+  const send =
+    ctx.role === UserRole.ADMIN
+      ? sendAdminLockoutEmail(account.email, account.name, payload)
+      : sendMemberLockoutEmail(account.email, account.name, payload);
+
+  await send.catch((e: unknown) =>
+    console.error("[admin-security] lockout email failed:", e),
+  );
 }
 
 /** Admin-facing: clear a lockout by hand. */
@@ -181,6 +234,10 @@ export type AttemptRow = {
   location: string;
   latitude: number | null;
   longitude: number | null;
+  gpsLatitude: number | null;
+  gpsLongitude: number | null;
+  gpsAccuracy: number | null;
+  gpsStatus: string | null;
   org: string | null;
   vpnSuspected: boolean;
   vpnReason: string | null;
@@ -228,6 +285,10 @@ export async function getSecurityOverview(limit = 50): Promise<SecurityOverview>
       location: describeLocation(r),
       latitude: r.latitude ?? null,
       longitude: r.longitude ?? null,
+      gpsLatitude: r.gpsLatitude ?? null,
+      gpsLongitude: r.gpsLongitude ?? null,
+      gpsAccuracy: r.gpsAccuracy ?? null,
+      gpsStatus: r.gpsStatus ?? null,
       org: r.org ?? null,
       vpnSuspected: r.vpnSuspected,
       vpnReason: r.vpnReason ?? null,

@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Model, type Types } from "mongoose";
+import { UserRole } from "@/lib/enums";
 
 /**
  * Every admin sign-in attempt, successful or not.
@@ -15,6 +16,8 @@ export type AdminAuthStage = "LOOKUP" | "PASSWORD" | "CODE" | "SESSION";
 export interface IAdminLoginAttempt {
   _id: Types.ObjectId;
   email: string;
+  /** Which kind of account was being signed into. Thresholds differ. */
+  role: UserRole;
   success: boolean;
   stage: AdminAuthStage;
   /** Why it failed, for the admin-facing log. Never shown to the person trying. */
@@ -31,6 +34,19 @@ export interface IAdminLoginAttempt {
   latitude?: number | null;
   longitude?: number | null;
 
+  /**
+   * Device-reported position, when the browser granted permission. Far more
+   * precise than the network estimate — metres rather than a city — but far
+   * less trustworthy: it arrives from the client and can be forged. The network
+   * estimate above is kept alongside precisely so the two can be compared.
+   */
+  gpsLatitude?: number | null;
+  gpsLongitude?: number | null;
+  /** Radius of confidence in metres, as reported by the device. */
+  gpsAccuracy?: number | null;
+  /** Why there is no GPS fix: denied, unavailable, timed out, unsupported. */
+  gpsStatus?: string | null;
+
   /** Network intelligence. `vpnSuspected` is a heuristic, never a verdict. */
   asn?: string | null;
   org?: string | null;
@@ -43,6 +59,7 @@ export interface IAdminLoginAttempt {
 const AdminLoginAttemptSchema = new Schema<IAdminLoginAttempt>(
   {
     email: { type: String, required: true, lowercase: true, trim: true, index: true },
+    role: { type: String, enum: Object.values(UserRole), default: UserRole.ADMIN, index: true },
     success: { type: Boolean, required: true, index: true },
     stage: {
       type: String,
@@ -60,6 +77,11 @@ const AdminLoginAttemptSchema = new Schema<IAdminLoginAttempt>(
     city: { type: String, default: null },
     latitude: { type: Number, default: null },
     longitude: { type: Number, default: null },
+
+    gpsLatitude: { type: Number, default: null },
+    gpsLongitude: { type: Number, default: null },
+    gpsAccuracy: { type: Number, default: null },
+    gpsStatus: { type: String, default: null },
 
     asn: { type: String, default: null },
     org: { type: String, default: null },

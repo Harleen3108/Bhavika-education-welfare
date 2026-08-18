@@ -7,6 +7,7 @@ import { getSession, signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { captureGps, type GpsFix } from "@/lib/geolocate";
 import { ArrowLeft, ArrowRight, LogIn, ShieldCheck } from "lucide-react";
 import { loginSchema, type LoginInput } from "@/lib/validation/auth";
 import { AccountStatus } from "@/lib/enums";
@@ -66,6 +67,12 @@ export function LoginForm() {
   // we stay on this same page and reveal an extra "admin code" step.
   const [creds, setCreds] = React.useState<LoginInput | null>(null);
   const [adminCode, setAdminCode] = React.useState("");
+  /*
+    Captured once, when an email turns out to be an admin, and reused for the
+    code step. Asking twice would show the browser's permission prompt twice in
+    one sign-in, which reads as the site malfunctioning.
+  */
+  const [gps, setGps] = React.useState<GpsFix | null>(null);
   const [verifyingCode, setVerifyingCode] = React.useState(false);
 
   const {
@@ -91,10 +98,23 @@ export function LoginForm() {
     const lookup = await postJson("/api/auth/admin/lookup", { email: values.email });
 
     if (lookup.ok) {
-      // Admin — verify the password before asking for the access code.
+      /*
+        Admin sign-in: ask the device where it is before verifying anything.
+        Every attempt is logged with its position, so the fix has to be taken on
+        the failing path too — capturing it only after a correct password would
+        leave exactly the attempts worth investigating without a location.
+
+        A refusal is recorded as a refusal, not treated as an error: the sign-in
+        continues either way, and "permission denied" is itself a fact about the
+        attempt.
+      */
+      const fix = await captureGps();
+      setGps(fix);
+
       const pw = await postJson("/api/auth/admin/verify-password", {
         email: values.email,
         password: values.password,
+        ...fix,
       });
       if (!pw.ok) {
         setFormError({
@@ -158,6 +178,7 @@ export function LoginForm() {
       email: creds.email,
       password: creds.password,
       adminCode,
+      ...(gps ?? {}),
       redirect: false,
     });
     setVerifyingCode(false);

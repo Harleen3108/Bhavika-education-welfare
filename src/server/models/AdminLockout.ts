@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Model, type Types } from "mongoose";
+import { UserRole } from "@/lib/enums";
 
 /**
  * Brute-force state for one admin identity.
@@ -14,6 +15,8 @@ import mongoose, { Schema, type Model, type Types } from "mongoose";
 export interface IAdminLockout {
   _id: Types.ObjectId;
   email: string;
+  /** Which kind of account this guards. Thresholds differ by role. */
+  role: UserRole;
   /** Failures since the last success or lockout. */
   failedCount: number;
   /** How many lockouts this identity has served. Drives the escalating delay. */
@@ -30,6 +33,7 @@ export interface IAdminLockout {
 const AdminLockoutSchema = new Schema<IAdminLockout>(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    role: { type: String, enum: Object.values(UserRole), default: UserRole.ADMIN },
     failedCount: { type: Number, default: 0, min: 0 },
     level: { type: Number, default: 0, min: 0 },
     lockedUntil: { type: Date, default: null },

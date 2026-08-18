@@ -18,6 +18,19 @@ const credsSchema = z.object({
   password: z.string().min(1),
   // Only supplied by the multi-step admin login flow.
   adminCode: z.string().optional(),
+  /*
+    Device position, sent by the admin login form when the browser granted
+    permission. Recorded as a claim about where the sign-in happened — it comes
+    from the client, so it is evidence to weigh against the network estimate,
+    never an authority over it. Coerced and bounded so a hostile value cannot
+    reach the database.
+  */
+  gpsLatitude: z.coerce.number().min(-90).max(90).nullish(),
+  gpsLongitude: z.coerce.number().min(-180).max(180).nullish(),
+  gpsAccuracy: z.coerce.number().min(0).max(100_000).nullish(),
+  gpsStatus: z
+    .enum(["granted", "denied", "unavailable", "timeout", "unsupported"])
+    .nullish(),
 });
 
 /** Constant-time string comparison to avoid leaking the admin code via timing. */
@@ -45,7 +58,7 @@ export const {
       async authorize(raw, request) {
         const parsed = credsSchema.safeParse(raw);
         if (!parsed.success) return null;
-        const { email, password, adminCode } = parsed.data;
+        const { email, password, adminCode, ...gps } = parsed.data;
 
         await dbConnect();
         const user = await User.findOne({ email: email.toLowerCase() }).select(
@@ -68,20 +81,27 @@ export const {
         const isAdmin = user.role === UserRole.ADMIN;
         const req = request as Request | undefined;
 
-        if (isAdmin) {
-          const lock = await getLockState(user.email);
-          if (lock.locked) throw new Error("ADMIN_LOCKED");
-        }
+        /*
+          Both roles are guarded, at different thresholds: five failures for an
+          admin, ten for a member. Members get more rope because anyone who
+          knows an address can burn another person's attempts, and a tight limit
+          there locks a child out of their own quiz rather than stopping an
+          attacker.
+        */
+        const lock = await getLockState(user.email, user.role);
+        if (lock.locked) throw new Error(isAdmin ? "ADMIN_LOCKED" : "ACCOUNT_LOCKED");
 
         const ok = await verifyPassword(password, user.passwordHash);
         if (!ok) {
-          if (isAdmin && req) {
+          if (req) {
             await recordAdminAttempt({
               req,
               email: user.email,
+              role: user.role,
               stage: "SESSION",
               success: false,
               reason: "Wrong password at the session endpoint",
+              gps,
             });
           }
           return null;
@@ -104,9 +124,11 @@ export const {
               await recordAdminAttempt({
                 req,
                 email: user.email,
+                role: user.role,
                 stage: "CODE",
                 success: false,
                 reason: adminCode ? "Wrong admin access code" : "No admin access code supplied",
+                gps,
               });
             }
             throw new Error("ADMIN_CODE_INVALID");
@@ -118,10 +140,26 @@ export const {
             await recordAdminAttempt({
               req,
               email: user.email,
+              role: user.role,
               stage: "SESSION",
               success: true,
+              gps,
             });
           }
+        }
+
+        // A member has no further gate, so this is where their sign-in is
+        // complete and their failure counter can safely be cleared. Admins are
+        // recorded after the access code below, not here.
+        if (!isAdmin && req) {
+          await recordAdminAttempt({
+            req,
+            email: user.email,
+            role: user.role,
+            stage: "SESSION",
+            success: true,
+            gps,
+          });
         }
 
         // Update last login (fire and forget).

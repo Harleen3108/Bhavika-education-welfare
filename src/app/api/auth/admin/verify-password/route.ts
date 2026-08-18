@@ -23,7 +23,7 @@ export const POST = handle(async (req) => {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { email, password } = adminPasswordSchema.parse(body);
+  const { email, password, ...gps } = adminPasswordSchema.parse(body);
 
   // Checked BEFORE any password work: a locked identity must cost an attacker
   // a rejection, not a bcrypt comparison they can still time.
@@ -36,6 +36,7 @@ export const POST = handle(async (req) => {
       stage: "PASSWORD",
       success: false,
       reason: "Wrong password",
+      gps,
     });
     return fail("Password is wrong.", 401, { code: "BAD_PASSWORD" });
   }
