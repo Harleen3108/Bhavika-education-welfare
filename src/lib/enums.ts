@@ -86,6 +86,24 @@ export const LeaderboardPeriod = {
 } as const;
 export type LeaderboardPeriod = (typeof LeaderboardPeriod)[keyof typeof LeaderboardPeriod];
 
+export const CouponStatus = {
+  ACTIVE: "ACTIVE", // issued, unused, not yet past expiresAt
+  REDEEMED: "REDEEMED", // spent at the partner store (exactly once)
+  EXPIRED: "EXPIRED", // lapsed unused — points are forfeited, never refunded
+} as const;
+export type CouponStatus = (typeof CouponStatus)[keyof typeof CouponStatus];
+
+/**
+ * Where a coupon's value came from. Printed on the coupon ("Generated From:
+ * Points") per the written specification, which is also why this is an enum
+ * with a single member today: a future promotional or admin-granted coupon is
+ * then a new value here rather than a schema change.
+ */
+export const CouponSource = {
+  POINTS: "POINTS",
+} as const;
+export type CouponSource = (typeof CouponSource)[keyof typeof CouponSource];
+
 export const IntegrationStatus = {
   INITIATED: "INITIATED",
   VERIFIED: "VERIFIED",

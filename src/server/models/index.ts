@@ -21,6 +21,7 @@ export { ActivityReward, type IActivityReward } from "./ActivityReward";
 export { UserActivityReward, type IUserActivityReward } from "./UserActivityReward";
 export { AdminAuditLog, type IAdminAuditLog } from "./AdminAuditLog";
 export { SystemSettings, type ISystemSettings } from "./SystemSettings";
+export { Coupon, type ICoupon } from "./Coupon";
 export {
   IntegrationTransaction,
   type IIntegrationTransaction,

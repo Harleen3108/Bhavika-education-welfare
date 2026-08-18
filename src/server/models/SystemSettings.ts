@@ -27,6 +27,7 @@ export interface ISystemSettings {
     minRedeemPoints: number;
     pointsPerRupee: number;
     redeemStepPoints: number;
+    couponValidityDays: number;
   };
   updatedBy?: Types.ObjectId | null;
   updatedAt: Date;
@@ -63,6 +64,9 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
       minRedeemPoints: { type: Number, default: 5000, min: 1 },
       pointsPerRupee: { type: Number, default: 10, min: 1 },
       redeemStepPoints: { type: Number, default: 500, min: 1 },
+      // How long an issued coupon stays usable before it is forfeited. Tunable
+      // because it is a promise made to members, not a technical detail.
+      couponValidityDays: { type: Number, default: 90, min: 1 },
     },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
   },

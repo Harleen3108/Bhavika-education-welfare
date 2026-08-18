@@ -78,6 +78,9 @@ export const ADMIN_NAV = [
   { label: "Quizzes", href: "/admin/quizzes" },
   { label: "Users", href: "/admin/users" },
   { label: "Wallet", href: "/admin/wallet" },
+  // Sits beside Wallet: an issued coupon is points that have already left a
+  // wallet, so the two pages are read together when money is being reconciled.
+  { label: "Coupons", href: "/admin/coupons" },
   { label: "Referrals", href: "/admin/referrals" },
   { label: "Contacts", href: "/admin/contacts" },
   { label: "Settings", href: "/admin/settings" },
@@ -125,6 +128,13 @@ export const DEFAULT_SETTINGS = {
      * coupon is always a round rupee amount rather than ₹37.40.
      */
     redeemStepPoints: 500,
+    /**
+     * How long an issued coupon stays usable. Points are debited the moment the
+     * coupon is created and are NOT returned if it lapses unused, so this number
+     * is the length of the window a family has to actually spend what they
+     * earned — it must be stated to them before they generate anything.
+     */
+    couponValidityDays: 90,
   },
 } as const;
 
@@ -143,3 +153,23 @@ export const UPLOAD = {
 } as const;
 
 export const REFERRAL_CODE_LENGTH = 8;
+
+/**
+ * Coupon code shape — e.g. `BHAV-7K2X-9QM4-P8RT`.
+ *
+ * Read aloud down a phone line to a shopkeeper and copied off a printout, so it
+ * uses the same unambiguous alphabet as referral codes (no O/0/I/1 — all four
+ * confusable glyphs are absent, which is why no character substitution is
+ * needed when normalising typed input) and is dashed into groups of four.
+ *
+ * Three groups, not two: a coupon is money, the partner store's validation
+ * endpoint does not exist yet so we cannot lean on its rate limiting, and 12
+ * characters over a 32-symbol alphabet is ~1.15e18 codes — unguessable — while
+ * still short enough to dictate.
+ */
+export const COUPON_CODE = {
+  prefix: "BHAV",
+  alphabet: "ABCDEFGHJKLMNPQRSTUVWXYZ23456789",
+  groupLength: 4,
+  groups: 3,
+} as const;
