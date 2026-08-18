@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MessageCircle, Phone, Mail, X, HeadphonesIcon } from "lucide-react";
+import { MessageCircle, Phone, Mail, X, MessageSquareText, SendHorizontal } from "lucide-react";
 import { Hi } from "@/components/ui/Bilingual";
 import { SITE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -47,6 +47,16 @@ const CHANNELS = [
     labelHi: "ईमेल",
     hint: "We reply within a day",
     tone: "bg-brand-700 text-white",
+  },
+  {
+    key: "form",
+    href: "/contact",
+    external: false,
+    icon: SendHorizontal,
+    label: "Send a message",
+    labelHi: "संदेश भेजें",
+    hint: "Fill the contact form",
+    tone: "bg-night-800 text-white",
   },
 ] as const;
 
@@ -125,7 +135,7 @@ export function FloatingContact() {
         aria-label={open ? "Close contact options" : "Contact us"}
         className="bg-gradient-cta inline-flex h-14 w-14 items-center justify-center rounded-full text-white shadow-xl transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
       >
-        {open ? <X size={24} /> : <HeadphonesIcon size={24} />}
+        {open ? <X size={24} /> : <MessageSquareText size={24} />}
       </button>
     </div>
   );

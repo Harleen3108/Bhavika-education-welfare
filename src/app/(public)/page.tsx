@@ -28,6 +28,7 @@ import { ContactForm } from "@/components/public/ContactForm";
 import { icon } from "@/components/home/icon-map";
 import { CountUp, Parallax, Reveal, StaggerGroup, TiltCard } from "@/components/motion";
 import { SITE } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import {
   GAP,
   JOURNEY,
@@ -313,26 +314,46 @@ export default async function HomePage() {
             />
           </Reveal>
 
-          <StaggerGroup className="mt-12 grid gap-6 md:grid-cols-3" stagger={0.12}>
-            {pillars.data.map((p) => {
+          {/*
+            Two up on a phone, with any odd final card taking the full width
+            rather than sitting half-empty beside a gap. With the usual three
+            pillars that puts Mission and Vision side by side and Values on its
+            own line, which is also the reading order.
+          */}
+          <StaggerGroup
+            className="mt-12 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3"
+            stagger={0.12}
+          >
+            {pillars.data.map((p, i) => {
               const Icon = icon(p.icon);
+              const lastOdd =
+                i === pillars.data.length - 1 && pillars.data.length % 2 === 1;
               return (
-                <Card key={p.title} interactive className="relative overflow-hidden">
+                <Card
+                  key={p.title}
+                  interactive
+                  className={cn(
+                    "relative overflow-hidden",
+                    lastOdd && "col-span-2 md:col-span-1",
+                  )}
+                >
                   <Icon
                     aria-hidden
                     size={120}
                     strokeWidth={1}
                     className="pointer-events-none absolute -top-6 -right-6 text-brand-100"
                   />
-                  <CardBody className="relative">
-                    <span className="bg-gradient-cta mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl text-white">
-                      <Icon size={22} />
+                  <CardBody className="relative p-4! sm:p-6!">
+                    <span className="bg-gradient-cta mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl text-white sm:mb-4 sm:h-12 sm:w-12 sm:rounded-2xl">
+                      <Icon size={20} />
                     </span>
-                    <h3 className="text-xl">{p.title}</h3>
-                    <Hi className="mt-0.5 block font-semibold text-brand-700">
+                    <h3 className="text-base sm:text-xl">{p.title}</h3>
+                    <Hi className="mt-0.5 block text-sm font-semibold text-brand-700 sm:text-base">
                       {p.titleHi}
                     </Hi>
-                    <p className="mt-3 leading-relaxed text-ink-600">{p.body}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-ink-600 sm:mt-3 sm:text-base">
+                      {p.body}
+                    </p>
                   </CardBody>
                 </Card>
               );
@@ -413,7 +434,7 @@ export default async function HomePage() {
               two GSAP effects on one element would fight over its transform. */}
           <StaggerGroup
             as="ul"
-            className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+            className="mt-12 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3"
             stagger={0.08}
           >
             {programs.data.map((p) => {
@@ -432,7 +453,7 @@ export default async function HomePage() {
                             src={art.url}
                             alt={art.alt}
                             fill
-                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 380px"
                             loading="lazy"
                             className="object-cover transition-transform duration-500 group-hover:scale-105"
                           />
@@ -442,13 +463,13 @@ export default async function HomePage() {
                           />
                           <span
                             aria-hidden
-                            className="absolute bottom-3 left-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-surface text-brand-700 shadow-sm"
+                            className="absolute bottom-2 left-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-surface text-brand-700 shadow-sm sm:bottom-3 sm:left-4 sm:h-11 sm:w-11 sm:rounded-2xl"
                           >
-                            <Icon size={20} />
+                            <Icon size={18} />
                           </span>
                         </div>
                       )}
-                      <CardBody className="flex flex-1 flex-col">
+                      <CardBody className="flex flex-1 flex-col p-4! sm:p-6!">
                         {!art && (
                           <span
                             aria-hidden
@@ -457,12 +478,14 @@ export default async function HomePage() {
                             <Icon size={22} />
                           </span>
                         )}
-                        <h3 className="text-lg">{p.title}</h3>
-                        <Hi className="mt-0.5 block font-semibold text-brand-700">
+                        <h3 className="text-base sm:text-lg">{p.title}</h3>
+                        <Hi className="mt-0.5 block text-sm font-semibold text-brand-700 sm:text-base">
                           {p.titleHi}
                         </Hi>
-                        <p className="mt-3 flex-1 leading-relaxed text-ink-600">{p.body}</p>
-                        <p className="mt-5 border-t border-ink-200 pt-4 text-sm font-semibold text-accent-700">
+                        <p className="mt-2 flex-1 text-sm leading-relaxed text-ink-600 sm:mt-3 sm:text-base">
+                          {p.body}
+                        </p>
+                        <p className="mt-4 border-t border-ink-200 pt-3 text-xs font-semibold text-accent-700 sm:mt-5 sm:pt-4 sm:text-sm">
                           {p.stat}{" "}
                           <Hi inline className="text-ink-500">
                             {p.statHi}
@@ -739,7 +762,7 @@ export default async function HomePage() {
 
           <StaggerGroup
             as="ul"
-            className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
+            className="mt-12 grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4"
             stagger={0.08}
           >
             {WALLETS.map((w) => {

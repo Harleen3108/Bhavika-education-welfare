@@ -336,10 +336,22 @@ export function PartnerCard({ p, index = 0 }: { p: PartnerDTO; index?: number })
  */
 export function PartnerChip({ p, index = 0 }: { p: PartnerDTO; index?: number }) {
   return (
-    <PartnerLink p={p} className="rounded-full">
-      <span className="flex h-full items-center gap-3 rounded-full border border-ink-200 bg-surface py-2 pr-5 pl-2 shadow-card transition-shadow hover:shadow-card-hover">
-        <PartnerMark p={p} index={index} className="h-11 w-11 rounded-full text-[0.8125rem]" />
-        <span className="text-[0.9375rem] leading-tight font-semibold text-ink-900">
+    /*
+      Names run from "Rotary Club of Rohtak" to "District Education Office,
+      Rohtak", and a single-line pill of the longer ones is wider than a 360px
+      screen — so every bubble took its own row and the wall read as a list.
+      On mobile the name wraps inside a capped width so the bubbles stay narrow
+      enough to flow two per row; rounded-2xl because a fully-rounded two-line
+      box reads as a blob. The single-line pill returns at sm.
+    */
+    <PartnerLink p={p} className="rounded-2xl sm:rounded-full">
+      <span className="flex h-full items-center gap-2 rounded-2xl border border-ink-200 bg-surface py-1.5 pr-3 pl-1.5 shadow-card transition-shadow hover:shadow-card-hover sm:gap-3 sm:rounded-full sm:py-2 sm:pr-5 sm:pl-2">
+        <PartnerMark
+          p={p}
+          index={index}
+          className="h-9 w-9 rounded-full text-[0.6875rem] sm:h-11 sm:w-11 sm:text-[0.8125rem]"
+        />
+        <span className="max-w-[8.5rem] text-[0.8125rem] leading-tight font-semibold text-balance text-ink-900 sm:max-w-none sm:text-[0.9375rem]">
           <MixedScript text={p.name} />
         </span>
       </span>
