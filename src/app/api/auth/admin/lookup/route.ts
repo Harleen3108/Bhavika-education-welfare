@@ -3,6 +3,7 @@ import { rateLimit } from "@/server/rate-limit";
 import { adminLookupSchema } from "@/lib/validation/auth";
 import { isAdminEmail } from "@/server/services/admin-auth.service";
 import { RATE_LIMITS } from "@/lib/constants";
+import { assertNotLocked } from "@/server/services/admin-security.service";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,10 @@ export const POST = handle(async (req) => {
   if (!(await isAdminEmail(email))) {
     return fail("This ID is not recognised as an admin.", 404, { code: "NOT_ADMIN" });
   }
+
+  // Surfaces the lock at step one rather than letting someone fill in a
+  // password first and only then be told the account is closed.
+  await assertNotLocked(email);
 
   return ok({ success: true });
 });

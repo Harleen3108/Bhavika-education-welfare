@@ -407,3 +407,85 @@ export async function sendReferralJoinedEmail(
     ].join("\n"),
   });
 }
+
+/**
+ * Warn an administrator that their account has been locked after repeated
+ * failed sign-ins.
+ *
+ * Sent to the account under attack, never to whoever was typing. The location
+ * is deliberately described as approximate: it comes from IP geolocation, which
+ * resolves to a city or a carrier hub, and an admin acting on it should know
+ * that before they conclude anything about who was responsible.
+ */
+export async function sendAdminLockoutEmail(
+  to: string,
+  name: string,
+  ctx: {
+    minutes: number;
+    attempts: number;
+    ip: string;
+    location: string;
+    vpnSuspected: boolean;
+    org: string | null;
+    at: Date;
+  },
+): Promise<SendResult> {
+  const when = ctx.at.toLocaleString("en-IN", { timeZone: SITE.timezone });
+
+  const row = (label: string, value: string) => `
+    <tr>
+      <td style="padding:7px 0;font-family:${FONT};font-size:13px;color:${C.inkFaint};white-space:nowrap;vertical-align:top">${label}</td>
+      <td style="padding:7px 0 7px 16px;font-family:${FONT};font-size:14px;font-weight:600;color:${C.ink};word-break:break-all">${value}</td>
+    </tr>`;
+
+  const vpnLine = ctx.vpnSuspected
+    ? `<p style="margin:0 0 18px;padding:12px 14px;border-radius:12px;background-color:#fef2f2;border:1px solid #fecaca;font-family:${FONT};font-size:13px;line-height:1.6;color:#991b1b">
+         <strong>The address looks like a VPN or hosting network.</strong> That is a
+         reason to look closer, not proof of anything — some legitimate corporate
+         networks look the same.
+       </p>`
+    : "";
+
+  return send({
+    to,
+    name,
+    subject: `Admin sign-in blocked — ${SITE.shortName}`,
+    html: shell({
+      preheader: `${ctx.attempts} failed admin sign-ins. The account is locked for ${ctx.minutes} minutes.`,
+      title: "Someone is trying to sign in to your admin account",
+      titleHi: "आपके एडमिन खाते में लॉगिन की कोशिश हुई है",
+      bodyHtml: `
+        <p style="margin:0 0 16px;font-family:${FONT};font-size:15px;line-height:1.65;color:${C.inkMuted}">
+          Hi ${name}, there were <strong>${ctx.attempts} failed sign-in attempts</strong> on your
+          administrator account. It is now locked for <strong>${ctx.minutes} minutes</strong>.
+          Each further round of failures locks it for twice as long.
+        </p>
+        <p style="margin:0 0 18px;font-family:${FONT_HI};font-size:14px;line-height:1.7;color:${C.coralDeep}">
+          आपके एडमिन खाते में ${ctx.attempts} बार गलत लॉगिन हुआ। खाता ${ctx.minutes} मिनट के लिए बंद है।
+        </p>
+        ${vpnLine}
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 18px">
+          ${row("When", when)}
+          ${row("IP address", ctx.ip)}
+          ${row("Approx. location", ctx.location)}
+          ${ctx.org ? row("Network", ctx.org) : ""}
+        </table>
+        <p style="margin:0 0 6px;font-family:${FONT};font-size:13px;line-height:1.65;color:${C.inkFaint}">
+          The location is an estimate from the network address. It points to a city or
+          an internet provider's hub, not to a person or an exact place.
+        </p>
+        <p style="margin:0;font-family:${FONT};font-size:14px;line-height:1.65;color:${C.inkMuted}">
+          <strong>If this was you</strong>, wait for the lock to lift and sign in again.
+          <strong>If it was not</strong>, change your admin password and the admin access
+          code now, and review the sign-in log in the admin panel.
+        </p>`,
+    }),
+    text:
+      `${ctx.attempts} failed admin sign-ins on your account. Locked for ${ctx.minutes} minutes.\n` +
+      `When: ${when}\nIP: ${ctx.ip}\nApprox. location: ${ctx.location}\n` +
+      `${ctx.org ? `Network: ${ctx.org}\n` : ""}` +
+      `${ctx.vpnSuspected ? "The address looks like a VPN or hosting network.\n" : ""}` +
+      `Location is an estimate from the IP address, not an exact place.\n` +
+      `If this was not you, change your password and admin access code now.`,
+  });
+}

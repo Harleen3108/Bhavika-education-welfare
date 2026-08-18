@@ -59,3 +59,21 @@ export async function setUserStatus(input: unknown): Promise<ActionResult> {
     revalidatePath(`/admin/users/${userId}`);
   });
 }
+
+/** Lift an admin lockout by hand, for when the owner is the one locked out. */
+export async function releaseAdminLockout(input: unknown): Promise<ActionResult> {
+  return runAdmin(async (admin) => {
+    const email = z.string().email("A valid admin email is required.").parse(input);
+    const { clearAdminLockout } = await import(
+      "@/server/services/admin-security.service"
+    );
+    await clearAdminLockout(email);
+
+    await logAdminAction(admin.id, "security.unlock", {
+      targetType: "User",
+      targetId: email,
+      reason: "Admin lockout cleared manually",
+    });
+    revalidatePath("/admin/security");
+  });
+}

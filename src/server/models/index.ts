@@ -27,3 +27,5 @@ export {
   type IIntegrationTransaction,
 } from "./IntegrationTransaction";
 export { Token, type IToken, type TokenPurpose } from "./Token";
+export { AdminLoginAttempt, type IAdminLoginAttempt, type AdminAuthStage } from "./AdminLoginAttempt";
+export { AdminLockout, type IAdminLockout } from "./AdminLockout";

@@ -21,6 +21,7 @@ import {
   Users,
   Mail,
   Settings,
+  ShieldAlert,
   Home,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
@@ -46,6 +47,7 @@ const ICONS: Record<string, React.ElementType> = {
   "/admin/wallet": WalletIcon,
   "/admin/referrals": Gift,
   "/admin/contacts": Mail,
+  "/admin/security": ShieldAlert,
   "/admin/settings": Settings,
 };
 

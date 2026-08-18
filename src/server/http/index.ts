@@ -1,10 +1,8 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import { createHash } from "crypto";
 import { ZodError } from "zod";
 import { AuthError } from "@/server/auth/session";
 import { DomainError } from "@/server/errors";
-import { env } from "@/lib/env";
 
 export { DomainError };
 
@@ -18,17 +16,7 @@ export function fail(message: string, status = 400, extra?: Partial<ApiError>) {
   return NextResponse.json<ApiError>({ error: message, ...extra }, { status });
 }
 
-/** Extract the best-guess client IP from proxy headers (Vercel-aware). */
-export function getClientIp(req: Request): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0].trim();
-  return req.headers.get("x-real-ip") ?? "0.0.0.0";
-}
-
-/** One-way hash of an IP (salted with AUTH_SECRET) for abuse investigation without storing PII. */
-export function hashIp(ip: string): string {
-  return createHash("sha256").update(`${ip}:${env.AUTH_SECRET}`).digest("hex").slice(0, 32);
-}
+export { getClientIp, hashIp } from "./client-ip";
 
 /**
  * Wrap a route handler so thrown domain errors become clean HTTP responses and

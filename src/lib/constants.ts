@@ -83,6 +83,7 @@ export const ADMIN_NAV = [
   { label: "Coupons", href: "/admin/coupons" },
   { label: "Referrals", href: "/admin/referrals" },
   { label: "Contacts", href: "/admin/contacts" },
+  { label: "Security", href: "/admin/security" },
   { label: "Settings", href: "/admin/settings" },
 ] as const;
 
