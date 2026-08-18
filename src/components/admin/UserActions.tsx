@@ -2,74 +2,134 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { Ban, CheckCircle2, Coins, PauseCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
-import { Input, Label } from "@/components/ui/Field";
+import { Textarea, Label } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
+import { Alert } from "@/components/ui/States";
+import { WalletAdjustForm, type AdjustMember } from "@/components/admin/WalletAdjustForm";
 import { setUserStatus } from "@/server/actions/users";
-import { adjustPoints } from "@/server/actions/wallet";
 import { AccountStatus } from "@/lib/enums";
 
-export function UserActions({ userId, status }: { userId: string; status: string }) {
-  const router = useRouter();
-  const [busy, setBusy] = React.useState(false);
-  const [adjustOpen, setAdjustOpen] = React.useState(false);
+type Status = (typeof AccountStatus)[keyof typeof AccountStatus];
 
-  const changeStatus = async (next: string) => {
-    const reason = window.prompt(`Reason for setting status to ${next}? (optional)`) ?? "";
-    setBusy(true);
-    try {
-      const res = await setUserStatus({ userId, status: next, reason });
-      if (!res.ok) return toast.error(res.error);
-      toast.success(`User set to ${next}.`);
-      router.refresh();
-    } finally {
-      setBusy(false);
-    }
-  };
+const STATUS_COPY: Record<string, { verb: string; consequence: string; danger?: boolean }> = {
+  [AccountStatus.ACTIVE]: {
+    verb: "Activate",
+    consequence: "They regain full access to quizzes, referrals and their wallet.",
+  },
+  [AccountStatus.SUSPENDED]: {
+    verb: "Suspend",
+    consequence: "They keep their points but cannot sign in until you activate them again.",
+  },
+  [AccountStatus.BLOCKED]: {
+    verb: "Block",
+    consequence: "They lose access permanently. Their ledger and referrals are kept intact.",
+    danger: true,
+  },
+};
+
+export function UserActions({
+  userId,
+  status,
+  member,
+}: {
+  userId: string;
+  status: string;
+  member: AdjustMember;
+}) {
+  const router = useRouter();
+  const [pendingStatus, setPendingStatus] = React.useState<Status | null>(null);
+  const [adjustOpen, setAdjustOpen] = React.useState(false);
 
   return (
     <div className="flex flex-wrap gap-2">
       {status !== AccountStatus.ACTIVE && (
-        <Button size="sm" variant="secondary" loading={busy} onClick={() => changeStatus(AccountStatus.ACTIVE)}>Activate</Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => setPendingStatus(AccountStatus.ACTIVE)}
+        >
+          <CheckCircle2 size={16} /> Activate
+        </Button>
       )}
       {status !== AccountStatus.SUSPENDED && (
-        <Button size="sm" variant="outline" loading={busy} onClick={() => changeStatus(AccountStatus.SUSPENDED)}>Suspend</Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setPendingStatus(AccountStatus.SUSPENDED)}
+        >
+          <PauseCircle size={16} /> Suspend
+        </Button>
       )}
       {status !== AccountStatus.BLOCKED && (
-        <Button size="sm" variant="danger" loading={busy} onClick={() => changeStatus(AccountStatus.BLOCKED)}>Block</Button>
+        <Button size="sm" variant="danger" onClick={() => setPendingStatus(AccountStatus.BLOCKED)}>
+          <Ban size={16} /> Block
+        </Button>
       )}
-      <Button size="sm" variant="subtle" onClick={() => setAdjustOpen(true)}>Adjust points</Button>
+      <Button size="sm" variant="subtle" onClick={() => setAdjustOpen(true)}>
+        <Coins size={16} /> Adjust points
+      </Button>
 
-      <AdjustModal open={adjustOpen} onClose={() => setAdjustOpen(false)} userId={userId} onDone={() => router.refresh()} />
+      <StatusModal
+        userId={userId}
+        next={pendingStatus}
+        onClose={() => setPendingStatus(null)}
+        onDone={() => router.refresh()}
+      />
+
+      <Modal
+        open={adjustOpen}
+        onClose={() => setAdjustOpen(false)}
+        title={`Adjust ${member.name}'s points`}
+      >
+        <WalletAdjustForm member={member} />
+      </Modal>
     </div>
   );
 }
 
-function AdjustModal({
-  open,
-  onClose,
+/**
+ * Status changes used to go through `window.prompt`, which several browsers now
+ * suppress outright — the admin would see nothing happen and click again. A real
+ * dialog also lets the consequence be stated before the decision is made, and
+ * keeps the reason (which lands in the audit log) an optional field rather than
+ * something the admin has to cancel out of.
+ */
+function StatusModal({
   userId,
+  next,
+  onClose,
   onDone,
 }: {
-  open: boolean;
-  onClose: () => void;
   userId: string;
+  next: Status | null;
+  onClose: () => void;
   onDone: () => void;
 }) {
-  const [points, setPoints] = React.useState(0);
   const [reason, setReason] = React.useState("");
   const [busy, setBusy] = React.useState(false);
 
-  const submit = async () => {
+  const copy = next ? STATUS_COPY[next] : null;
+
+  const close = () => {
+    setReason("");
+    onClose();
+  };
+
+  const confirm = async () => {
+    if (!next || busy) return;
     setBusy(true);
     try {
-      const res = await adjustPoints({ userId, points, reason });
-      if (!res.ok) return toast.error(res.error);
-      toast.success("Adjustment applied and recorded.");
-      onClose();
-      setPoints(0);
+      const res = await setUserStatus({ userId, status: next, reason: reason.trim() });
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(`Account set to ${next.toLowerCase()}.`);
       setReason("");
+      onClose();
       onDone();
     } finally {
       setBusy(false);
@@ -77,22 +137,34 @@ function AdjustModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Manual point adjustment">
+    <Modal open={Boolean(next)} onClose={close} title={copy ? `${copy.verb} this account` : ""}>
       <div className="space-y-4">
-        <p className="text-sm text-ink-500">
-          Positive to credit, negative to debit. This creates an audited ledger transaction — balances are never edited silently.
-        </p>
+        {copy && (
+          <Alert tone={copy.danger ? "danger" : "info"}>{copy.consequence}</Alert>
+        )}
         <div>
-          <Label required>Points (+/-)</Label>
-          <Input type="number" value={points} onChange={(e) => setPoints(Number(e.target.value))} />
-        </div>
-        <div>
-          <Label required>Reason</Label>
-          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Event participation bonus" />
+          <Label htmlFor="status-reason">Reason</Label>
+          <Textarea
+            id="status-reason"
+            value={reason}
+            maxLength={300}
+            placeholder="Optional — recorded in the admin audit log."
+            onChange={(e) => setReason(e.target.value)}
+            className="min-h-20"
+          />
         </div>
         <div className="flex justify-end gap-2">
-          <Button variant="subtle" onClick={onClose}>Cancel</Button>
-          <Button onClick={submit} loading={busy} disabled={!points || reason.trim().length < 3}>Apply</Button>
+          <Button variant="subtle" onClick={close} type="button">
+            Cancel
+          </Button>
+          <Button
+            variant={copy?.danger ? "danger" : "primary"}
+            onClick={confirm}
+            loading={busy}
+            type="button"
+          >
+            {copy?.verb ?? "Confirm"}
+          </Button>
         </div>
       </div>
     </Modal>

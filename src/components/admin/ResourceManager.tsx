@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, Check, Minus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
-import { Card, CardBody } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Input, Textarea, Label, FieldError } from "@/components/ui/Field";
 import { Modal, ConfirmButton } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";

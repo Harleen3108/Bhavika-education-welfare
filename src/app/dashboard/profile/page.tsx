@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { CheckCircle2, XCircle, Copy } from "lucide-react";
 import { getSessionUser } from "@/server/auth/session";
 import { getProfile } from "@/server/services/user.service";
+import { getReferrerName } from "@/server/services/referral.service";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ProfileForm } from "@/components/dashboard/ProfileForm";
 import { Card, CardBody, CardTitle } from "@/components/ui/Card";
@@ -17,14 +18,19 @@ export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
   const session = await getSessionUser();
-  const profile = await getProfile(session!.id);
+  const [profile, referrerName] = await Promise.all([
+    getProfile(session!.id),
+    getReferrerName(session!.id),
+  ]);
 
   return (
     <>
       <PageHeader title="Your profile" description="Manage your personal details." />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        {/* min-w-0: the implicit single track below lg is auto-sized, so without
+            it the widest child's min-content becomes the page's minimum width. */}
+        <div className="min-w-0 lg:col-span-2">
           <Card>
             <CardBody className="sm:p-7">
               <CardTitle>Edit details</CardTitle>
@@ -36,7 +42,7 @@ export default async function ProfilePage() {
           </Card>
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <Card>
             <CardBody>
               <CardTitle>Account</CardTitle>
@@ -66,6 +72,11 @@ export default async function ProfilePage() {
                   )}
                 </Row>
                 <Row label="Member since">{formatDate(profile.createdAt)}</Row>
+                {/* Display name only — the referrer's email and everything
+                    else about them stays private on the member's own view. */}
+                <Row label="Referred by">
+                  {referrerName ?? <span className="text-ink-500">Direct signup</span>}
+                </Row>
               </dl>
             </CardBody>
           </Card>
@@ -74,7 +85,7 @@ export default async function ProfilePage() {
             <CardBody>
               <CardTitle>Referral code</CardTitle>
               <div className="mt-3 flex items-center gap-2 rounded-xl bg-ink-50 px-3 py-2.5">
-                <code className="flex-1 font-mono text-lg font-bold tracking-wider text-brand-700">
+                <code className="min-w-0 flex-1 font-mono text-lg font-bold tracking-wider break-all text-brand-700">
                   {profile.referralCode}
                 </code>
                 <Copy size={16} className="text-ink-400" />
@@ -90,11 +101,17 @@ export default async function ProfilePage() {
   );
 }
 
+/*
+  Stacks below sm because the value can be an email address, and an email is one
+  unbreakable token: side-by-side it set a 389px floor that overflowed a 360px
+  phone and also blew out the narrow sidebar column at 1024/1440. break-all lets
+  it wrap at any character; min-w-0 stops it forcing the row wider than the card.
+*/
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <dt className="text-ink-500">{label}</dt>
-      <dd className="text-right font-medium text-ink-800">{children}</dd>
+    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+      <dt className="shrink-0 text-ink-500">{label}</dt>
+      <dd className="min-w-0 font-medium break-all text-ink-800 sm:text-right">{children}</dd>
     </div>
   );
 }

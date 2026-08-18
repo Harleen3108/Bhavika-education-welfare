@@ -36,8 +36,29 @@ async function postJson(url: string, body: unknown) {
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const callbackUrl = params.get("callbackUrl") || "/dashboard";
+  /*
+    Same-site paths only. `callbackUrl` is whatever the address bar carries, so
+    an absolute URL here would turn the login page into an open redirect: a link
+    to /login?callbackUrl=https://evil.example lands the member on someone
+    else's site the instant their password is accepted, with our toast on
+    screen. A protocol-relative "//host" is an absolute URL too, hence the
+    second test.
+  */
+  const requested = params.get("callbackUrl");
+  const callbackUrl =
+    requested && requested.startsWith("/") && !requested.startsWith("//")
+      ? requested
+      : "/dashboard";
   const justVerified = params.get("verified") === "1";
+
+  /*
+    The verification flow appends the address it just verified so the member
+    does not retype it. Shape-checked before it is trusted as a default: the
+    parameter is public, and putting arbitrary text in the email field would
+    only produce a validation error the member did not cause.
+  */
+  const prefillEmail = params.get("email") ?? "";
+  const initialEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(prefillEmail) ? prefillEmail : "";
 
   const [formError, setFormError] = React.useState<LoginError | null>(null);
 
@@ -53,7 +74,7 @@ export function LoginForm() {
     formState: { errors, isSubmitting },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: initialEmail, password: "" },
   });
 
   const finishLogin = (isAdmin: boolean) => {

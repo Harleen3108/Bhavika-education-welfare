@@ -25,6 +25,7 @@ import { Quiz } from "../src/server/models/Quiz";
 import { UserRole, AccountStatus, QuizType, QuizStatus } from "../src/lib/enums";
 import { CONTENT_KEYS, DEFAULT_ABOUT, DEFAULT_MISSION_VISION, DEFAULT_CONTACT } from "../src/lib/defaults";
 import { GALLERY_IMAGES, TESTIMONIAL_AVATARS } from "../src/lib/images";
+import { pickBankQuestions, seedFrom, toQuizQuestions } from "../src/lib/question-bank";
 
 const genCode = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 8);
 
@@ -284,6 +285,45 @@ async function main() {
     console.log("✓ Sample daily quiz created");
   } else {
     console.log("• Sample quiz already exists");
+  }
+
+  // ---- Sample weekly quiz ----
+  /*
+    Drawn from the built-in question bank rather than written out here: the bank
+    is bilingual and spans eight subjects, which is what a weekly paper for the
+    children should look like. The draw is seeded off the slug so a rebuilt
+    database gets the same twelve questions — a re-run cannot reshuffle a quiz
+    members may already have attempted. Created only when missing, like every
+    other write in this script.
+  */
+  const weeklySlug = "weekly-challenge-quiz";
+  const existingWeekly = await Quiz.findOne({ slug: weeklySlug });
+  if (!existingWeekly) {
+    const now = new Date();
+    const end = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 90); // one term
+    const questions = toQuizQuestions(
+      pickBankQuestions(12, { seed: seedFrom(weeklySlug) }),
+      10,
+    );
+    await Quiz.create({
+      title: "Weekly Challenge Quiz",
+      slug: weeklySlug,
+      description:
+        "Twelve questions across science, maths, history, geography and more — a new challenge every week. हर सप्ताह एक नई चुनौती।",
+      type: QuizType.WEEKLY,
+      status: QuizStatus.ACTIVE,
+      startAt: now,
+      endAt: end,
+      // Roughly a minute a question, which is unhurried for a class 5–9 reader
+      // working through an English line and its Hindi line.
+      timeLimitSeconds: 720,
+      maxAttempts: 1,
+      createdBy: admin._id,
+      questions,
+    });
+    console.log(`✓ Sample weekly quiz created (${questions.length} questions from the bank)`);
+  } else {
+    console.log("• Sample weekly quiz already exists");
   }
 
   // Ensure indexes are built.

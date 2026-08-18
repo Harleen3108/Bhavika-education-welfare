@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
+import { redirect } from "next/navigation";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { VerifyOtpForm } from "@/components/auth/VerifyOtpForm";
-import { ButtonLink } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/States";
 import { Hi } from "@/components/ui/Bilingual";
 import { verifyEmail } from "@/server/services/auth.service";
@@ -18,10 +17,13 @@ export const dynamic = "force-dynamic";
 /**
  * Both verification paths land here.
  *
- * A working link verifies on arrival. Anything else — no link, an expired one,
- * a mail client that mangled it — falls through to the 6-digit code form, which
- * is the recovery path rather than a footnote. There is no state of this page
- * without a visible way to get verified.
+ * A working link verifies on arrival and hands straight off to the login form,
+ * which carries the "verified" banner and the pre-filled address — the old
+ * success card was a dead end whose only control was a button to that same
+ * screen. Anything else — no link, an expired one, a mail client that mangled
+ * it — falls through to the 6-digit code form, which is the recovery path
+ * rather than a footnote. There is no state of this page without a visible way
+ * to get verified.
  */
 export default async function VerifyEmailPage({
   searchParams,
@@ -31,11 +33,12 @@ export default async function VerifyEmailPage({
   const { token, email } = await searchParams;
 
   let verified = false;
+  let verifiedEmail: string | undefined;
   let linkError: string | null = null;
 
   if (token) {
     try {
-      await verifyEmail(token);
+      verifiedEmail = await verifyEmail(token);
       verified = true;
     } catch (err) {
       linkError =
@@ -45,26 +48,13 @@ export default async function VerifyEmailPage({
     }
   }
 
+  // Outside the catch above on purpose: redirect() signals by throwing, so
+  // calling it in the try would be caught and reported as a broken link.
   if (verified) {
-    return (
-      <AuthCard title="Email verified" titleHi="ईमेल सत्यापित हो गया">
-        <div className="flex flex-col items-center text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-50 text-accent-600">
-            <CheckCircle2 size={30} />
-          </span>
-          <p className="type-small mt-4 text-ink-600">
-            Your account is active. Log in to start earning points.
-          </p>
-          <Hi className="mt-1 block text-[0.8rem] text-ink-500">
-            आपका खाता चालू हो गया है। पॉइंट्स कमाने के लिए लॉग इन करें।
-          </Hi>
-          <ButtonLink href="/login?verified=1" variant="gradient" size="lg" className="mt-6 w-full">
-            Continue to login
-            <Hi inline>लॉग इन करें</Hi>
-          </ButtonLink>
-        </div>
-      </AuthCard>
-    );
+    const params = new URLSearchParams({ verified: "1" });
+    // Absent when the link was merely replayed — see verifyEmail.
+    if (verifiedEmail) params.set("email", verifiedEmail);
+    redirect(`/login?${params.toString()}`);
   }
 
   return (

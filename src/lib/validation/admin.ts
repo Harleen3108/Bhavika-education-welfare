@@ -172,6 +172,71 @@ export const contactStatusSchema = z.object({
   status: z.enum([ContactStatus.NEW, ContactStatus.READ, ContactStatus.RESPONDED, ContactStatus.SPAM]),
 });
 
+/**
+ * Redemption economics.
+ *
+ * Every key of `integration` MUST be declared here. Zod strips unknown keys and
+ * `updateSettings` writes `$set: { integration: <whole object> }`, so a field
+ * missing from this schema is silently deleted from the stored document on the
+ * next save — the settings would then fall back to defaults with no trace of
+ * what the admin had configured.
+ *
+ * The three cross-field rules exist because the member-facing page states these
+ * numbers as promises, and the server re-checks them in `initiateRedemption`:
+ *
+ *  1. step <= min          — a step larger than the threshold means the
+ *                            advertised minimum is not itself redeemable.
+ *  2. min % step === 0     — the threshold must land ON a step. Otherwise a
+ *                            member who reaches exactly the advertised minimum
+ *                            is told they are eligible while the smallest
+ *                            amount the server accepts is one step higher.
+ *  3. step % rate === 0    — a step must be worth a whole rupee. Coupon value
+ *                            is floored, so a 250-point step at 3 points/₹
+ *                            would quietly round ₹83.33 down to ₹83 and eat
+ *                            the difference on every single redemption.
+ *
+ * Each cross-check short-circuits when the value it divides by is already
+ * invalid, so a blank field reports one clear error instead of three.
+ */
+const integrationSettingsSchema = z
+  .object({
+    redemptionEnabled: z.boolean(),
+    minRedeemPoints: z.coerce
+      .number()
+      .int("Use a whole number of points.")
+      .min(1, "The minimum must be at least 1 point.")
+      .max(1000000, "That threshold is higher than any member could reach."),
+    pointsPerRupee: z.coerce
+      .number()
+      .int("Use a whole number of points.")
+      .min(1, "At least 1 point must buy a rupee.")
+      .max(10000, "That rate would make points practically worthless."),
+    redeemStepPoints: z.coerce
+      .number()
+      .int("Use a whole number of points.")
+      .min(1, "The step must be at least 1 point.")
+      .max(1000000, "That step is larger than any realistic redemption."),
+  })
+  .refine((d) => d.minRedeemPoints < 1 || d.redeemStepPoints <= d.minRedeemPoints, {
+    message: "The step cannot be larger than the minimum to redeem.",
+    path: ["redeemStepPoints"],
+  })
+  .refine(
+    (d) =>
+      d.redeemStepPoints < 1 ||
+      d.redeemStepPoints > d.minRedeemPoints ||
+      d.minRedeemPoints % d.redeemStepPoints === 0,
+    {
+      message:
+        "The minimum must be a whole number of steps, or members who reach it exactly still cannot redeem.",
+      path: ["minRedeemPoints"],
+    },
+  )
+  .refine((d) => d.pointsPerRupee < 1 || d.redeemStepPoints % d.pointsPerRupee === 0, {
+    message: "Each step must be worth a whole number of rupees at this rate.",
+    path: ["redeemStepPoints"],
+  });
+
 export const settingsSchema = z.object({
   referral: z.object({
     referrerReward: z.coerce.number().int().min(0).max(100000),
@@ -187,7 +252,12 @@ export const settingsSchema = z.object({
   activity: z.object({
     profileCompletionPoints: z.coerce.number().int().min(0).max(100000),
   }),
-  integration: z.object({
-    redemptionEnabled: z.boolean(),
-  }),
+  integration: integrationSettingsSchema,
 });
+
+/**
+ * The exact shape `updateSettings` accepts. The admin form types its state with
+ * this so a field it forgets to send is a compile error rather than a key that
+ * disappears from the database on save.
+ */
+export type SettingsInput = z.infer<typeof settingsSchema>;

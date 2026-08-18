@@ -50,7 +50,9 @@ export default async function LeaderboardPage({
               key={t.value}
               href={`/dashboard/leaderboard?period=${t.value}`}
               className={cn(
-                "rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                // min-h-11 clears the 44px touch target on a phone; the desktop
+                // pill keeps its original 36px height from sm up.
+                "inline-flex min-h-11 items-center rounded-full px-4 py-2 text-sm font-medium transition-colors sm:min-h-0",
                 active ? "bg-brand-600 text-white" : "bg-ink-100 text-ink-700 hover:bg-ink-200",
               )}
             >

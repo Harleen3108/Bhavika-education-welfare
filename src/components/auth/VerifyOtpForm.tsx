@@ -104,16 +104,30 @@ export function VerifyOtpForm({
 
   const cooling = cooldown > 0;
 
+  /**
+   * Where "verified" lands, with the address appended so the login form can
+   * pre-fill it. Safe to carry: the server only returns ok for an address that
+   * a live code was issued to, so by this point it is the account's own — not
+   * whatever was typed into the box.
+   */
+  const destination = React.useMemo(() => {
+    const [path, query = ""] = redirectTo.split("?");
+    const params = new URLSearchParams(query);
+    if (email) params.set("email", email);
+    const qs = params.toString();
+    return qs ? `${path}?${qs}` : path;
+  }, [redirectTo, email]);
+
   // Land on the login screen once the confirmation has been read, but leave a
   // button so nobody is stranded if the redirect is blocked.
   React.useEffect(() => {
     if (!done) return;
     const id = window.setTimeout(() => {
-      router.push(redirectTo);
+      router.push(destination);
       router.refresh();
     }, 1800);
     return () => window.clearTimeout(id);
-  }, [done, redirectTo, router]);
+  }, [done, destination, router]);
 
   // Keyed on the boolean, not the count: the interval is created once per
   // cooldown rather than torn down and rebuilt on every tick.
@@ -256,7 +270,13 @@ export function VerifyOtpForm({
         </span>
         <h2 className="type-h3 mt-4">Email verified</h2>
         <Hi className="mt-1 block text-brand-700">ईमेल सत्यापित हो गया</Hi>
-        <ButtonLink href={redirectTo} variant="gradient" size="lg" className="mt-6 w-full">
+        <p className="type-small mt-3 text-ink-600">
+          Your account is active — sign in to start earning points.
+        </p>
+        <Hi className="mt-1 block text-[0.8rem] text-ink-500">
+          आपका खाता चालू हो गया है — पॉइंट्स कमाने के लिए साइन इन करें।
+        </Hi>
+        <ButtonLink href={destination} variant="gradient" size="lg" className="mt-6 w-full">
           Continue to login
           <Hi inline>लॉग इन करें</Hi>
         </ButtonLink>

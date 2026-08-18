@@ -18,15 +18,23 @@ export function QuizTimer({
   serverNow: string;
   onExpire: () => void;
 }) {
-  const offsetRef = React.useRef(Date.parse(serverNow) - Date.now());
+  // Pure: the gap between the two server-rendered instants, so it needs no
+  // clock reading during render and server and client agree on first paint.
   const [remaining, setRemaining] = React.useState(() =>
-    Math.max(0, Date.parse(expiresAt) - (Date.now() + offsetRef.current)),
+    Math.max(0, Date.parse(expiresAt) - Date.parse(serverNow)),
   );
+  const offsetRef = React.useRef<number | null>(null);
   const firedRef = React.useRef(false);
 
   React.useEffect(() => {
+    // Captured once, at mount. `serverNow` is a fixed instant in the past, so
+    // recomputing this later would measure the age of the page rather than the
+    // device's clock skew and hand the user back the time they had spent.
+    offsetRef.current ??= Date.parse(serverNow) - Date.now();
+    const offset = offsetRef.current;
+
     const tick = () => {
-      const ms = Math.max(0, Date.parse(expiresAt) - (Date.now() + offsetRef.current));
+      const ms = Math.max(0, Date.parse(expiresAt) - (Date.now() + offset));
       setRemaining(ms);
       if (ms <= 0 && !firedRef.current) {
         firedRef.current = true;
@@ -35,7 +43,7 @@ export function QuizTimer({
     };
     const t = setInterval(tick, 500);
     return () => clearInterval(t);
-  }, [expiresAt, onExpire]);
+  }, [expiresAt, serverNow, onExpire]);
 
   const totalSec = Math.ceil(remaining / 1000);
   const mm = Math.floor(totalSec / 60);

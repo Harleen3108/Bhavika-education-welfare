@@ -24,6 +24,9 @@ export interface ISystemSettings {
   };
   integration: {
     redemptionEnabled: boolean;
+    minRedeemPoints: number;
+    pointsPerRupee: number;
+    redeemStepPoints: number;
   };
   updatedBy?: Types.ObjectId | null;
   updatedAt: Date;
@@ -55,6 +58,11 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
     },
     integration: {
       redemptionEnabled: { type: Boolean, default: false },
+      // Redemption economics live here rather than in code so an admin can
+      // retune the threshold and the rate without a redeploy.
+      minRedeemPoints: { type: Number, default: 5000, min: 1 },
+      pointsPerRupee: { type: Number, default: 10, min: 1 },
+      redeemStepPoints: { type: Number, default: 500, min: 1 },
     },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
   },

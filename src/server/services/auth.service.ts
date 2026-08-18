@@ -3,8 +3,7 @@ import type { Types } from "mongoose";
 import { withTransaction, dbConnect } from "@/server/db/connect";
 import { User, Wallet } from "@/server/models";
 import { AccountStatus } from "@/lib/enums";
-import { env, getAppBaseUrl } from "@/lib/env";
-import { SITE } from "@/lib/constants";
+import { getAppBaseUrl } from "@/lib/env";
 import { DomainError } from "@/server/errors";
 import { hashPassword } from "@/server/auth/password";
 import { issueToken, consumeToken, peekToken } from "./token.service";
@@ -118,20 +117,29 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
  * Idempotent for the same link: the token is single-use, so a refresh or a
  * second click finds it already consumed. Rather than reporting that as a
  * failure, we confirm success when the account behind it is in fact verified.
+ *
+ * Returns the verified address, but ONLY on the click that actually spent the
+ * token — the caller uses it to pre-fill the login form. The idempotent replay
+ * path deliberately returns undefined instead: a spent link is otherwise inert
+ * to whoever finds it in a forwarded mail, a browser history or a referrer log,
+ * and echoing the account's email back would hand them the one thing it does
+ * not already give up. Callers must therefore treat the address as absent, not
+ * assume it.
  */
-export async function verifyEmail(token: string): Promise<void> {
+export async function verifyEmail(token: string): Promise<string | undefined> {
   await dbConnect();
 
   const userId = await consumeToken(token, "EMAIL_VERIFY");
   if (userId) {
     await activateVerifiedUser(userId);
-    return;
+    const user = await User.findById(userId).select("email").lean();
+    return user?.email;
   }
 
   const priorUserId = await peekToken(token, "EMAIL_VERIFY");
   if (priorUserId) {
     const user = await User.findById(priorUserId).select("emailVerified").lean();
-    if (user?.emailVerified) return;
+    if (user?.emailVerified) return undefined;
   }
 
   throw new DomainError("This verification link is invalid or has expired.", 400, "BAD_TOKEN");

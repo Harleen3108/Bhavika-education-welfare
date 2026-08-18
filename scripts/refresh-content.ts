@@ -29,6 +29,13 @@ const PLACEHOLDER_PARTNERS = ["Community Trust", "EduReach", "HealthFirst"];
  * Testimonials deliberately mix languages the way the audience actually
  * speaks: English, Hinglish (the common register for urban parents and
  * students), and one entirely in Hindi.
+ *
+ * PORTRAIT RULE: the avatar key must match the speaker's gender. Each entry
+ * carries the portrait's subject in a comment because the keys are roles
+ * ("graduate", "elder") which say nothing about who is pictured — that is
+ * exactly how Rahul Verma ended up illustrated by a photograph of a young
+ * woman. Check src/lib/images.ts TESTIMONIAL_AVATARS `alt` text before
+ * assigning a new one.
  */
 const TESTIMONIALS = [
   {
@@ -36,7 +43,7 @@ const TESTIMONIALS = [
     role: "Parent, Class 8 student · Rohtak",
     message:
       "My daughter now finishes her homework early just so she can play the quiz. Last month her points became a grocery discount. I never imagined studying could help my household budget.",
-    imageUrl: TESTIMONIAL_AVATARS.parent.url,
+    imageUrl: TESTIMONIAL_AVATARS.parent.url, // older woman in a sari — female speaker
     order: 1,
   },
   {
@@ -44,7 +51,7 @@ const TESTIMONIALS = [
     role: "Principal, partner school · Sonipat",
     message:
       "As a school principal I have seen many NGOs come for one photograph and leave. Bhavika's team has come back every single month for two years. That consistency is what changes a child's result.",
-    imageUrl: TESTIMONIAL_AVATARS.father.url,
+    imageUrl: TESTIMONIAL_AVATARS.father.url, // middle-aged man — male speaker
     order: 2,
   },
   {
@@ -52,7 +59,7 @@ const TESTIMONIALS = [
     role: "Student, Class 9 · छात्र",
     message:
       "Pehle main class mein hamesha average tha, kisi ne notice nahi kiya. Leaderboard pe jab district mein third aaya, tab ghar mein sab ne dekha. Woh certificate aaj bhi deewar pe laga hai.",
-    imageUrl: TESTIMONIAL_AVATARS.graduate.url,
+    imageUrl: TESTIMONIAL_AVATARS.student.url, // smiling boy — male speaker (was `graduate`, a young woman)
     order: 3,
   },
   {
@@ -60,15 +67,23 @@ const TESTIMONIALS = [
     role: "Skill programme graduate · प्रशिक्षणार्थी",
     message:
       "Tailoring course ne sab kuch badal diya. Ab main chaar dukaano ke liye silai karti hoon aur bete ki fees khud bharti hoon. Foundation ne badle mein kuch nahi maanga.",
-    imageUrl: TESTIMONIAL_AVATARS.trainee.url,
+    imageUrl: TESTIMONIAL_AVATARS.trainee.url, // woman in a red sari — female speaker
     order: 4,
+  },
+  {
+    name: "Anjali Sharma",
+    role: "Student, Class 8 · छात्रा",
+    message:
+      "Maths se mujhe hamesha darr lagta tha. Daily quiz mein roz do-teen sawaal aate hain, aur ab main bina soche jawab de deti hoon. Pichhle mahine main apni class mein second aayi.",
+    imageUrl: TESTIMONIAL_AVATARS.schoolgirl.url, // girl with a book — female speaker
+    order: 6,
   },
   {
     name: "रामप्रसाद यादव",
     role: "अभिभावक · गाँव सांघी",
     message:
       "मेरे गाँव में पढ़ाई को कोई गंभीरता से नहीं लेता था। अब बच्चे रोज़ शाम को क्विज़ खेलने बैठते हैं और पूछते हैं कि कल का सवाल क्या होगा। पॉइंट्स से जो छूट मिलती है, उससे घर का खर्च भी हल्का हुआ है।",
-    imageUrl: TESTIMONIAL_AVATARS.elder.url,
+    imageUrl: TESTIMONIAL_AVATARS.elder.url, // elderly farmer — male speaker
     order: 5,
   },
 ] as const;

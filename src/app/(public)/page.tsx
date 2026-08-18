@@ -425,8 +425,16 @@ export default async function HomePage() {
           </StaggerGroup>
 
           <div className="mt-10 text-center">
-            <ButtonLink href="/programs" variant="outline" size="lg">
-              Explore all programmes in detail <ArrowRight size={17} />
+            {/* Button is `whitespace-nowrap`, so this 354px label set the page's
+                min-content and overflowed a 360px phone. It wraps below sm and
+                keeps the single-line pill from sm up, where it fits. */}
+            <ButtonLink
+              href="/programs"
+              variant="outline"
+              size="lg"
+              className="h-auto max-w-full py-3.5 whitespace-normal sm:h-13 sm:py-0 sm:whitespace-nowrap"
+            >
+              Explore all programmes in detail <ArrowRight size={17} className="shrink-0" />
             </ButtonLink>
           </div>
         </Container>

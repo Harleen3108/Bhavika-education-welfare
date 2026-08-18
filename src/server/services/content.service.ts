@@ -148,16 +148,28 @@ export async function getPartners(): Promise<PartnerDTO[]> {
   }, []);
 }
 
-/** Live business settings, falling back to compiled defaults. */
+/**
+ * Live business settings, falling back to compiled defaults.
+ *
+ * Merged per section rather than taken wholesale, because a stored settings
+ * document is routinely missing keys the code already relies on. Two ways that
+ * happens, both of them normal: a document written before a setting existed
+ * never gains it (Mongoose applies schema defaults on insert, not on update),
+ * and `updateSettings` `$set`s each section as a whole object, so any key the
+ * admin form does not round-trip is dropped from the document on the next save.
+ * Without this merge those keys read back as `undefined` and land in arithmetic
+ * — `points % undefined` is NaN, and money rules must never be computed from a
+ * NaN.
+ */
 export async function getSettings() {
   return safeRead(async () => {
     const doc = await SystemSettings.findOne({ singleton: "global" }).lean();
     if (!doc) return DEFAULT_SETTINGS;
     return {
-      referral: doc.referral,
-      quiz: doc.quiz,
-      activity: doc.activity,
-      integration: doc.integration,
+      referral: { ...DEFAULT_SETTINGS.referral, ...doc.referral },
+      quiz: { ...DEFAULT_SETTINGS.quiz, ...doc.quiz },
+      activity: { ...DEFAULT_SETTINGS.activity, ...doc.activity },
+      integration: { ...DEFAULT_SETTINGS.integration, ...doc.integration },
     };
   }, DEFAULT_SETTINGS);
 }

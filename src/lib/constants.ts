@@ -108,6 +108,23 @@ export const DEFAULT_SETTINGS = {
   integration: {
     /** Phase 2 redemption disabled until Jai Maa Durga is live. */
     redemptionEnabled: false,
+    /**
+     * Points a member must hold before they can redeem anything. Matches the
+     * "At 5,000 points…" promise made on the public Rewards page — the two must
+     * move together or the site advertises a threshold it does not enforce.
+     */
+    minRedeemPoints: 5000,
+    /**
+     * Conversion rate: how many points buy one rupee of coupon value.
+     * At 10, the 5,000-point threshold is worth exactly the "₹500 off at Jai
+     * Maa Durga" figure shown on the homepage.
+     */
+    pointsPerRupee: 10,
+    /**
+     * Redemptions must land on a whole multiple of this many points, so a
+     * coupon is always a round rupee amount rather than ₹37.40.
+     */
+    redeemStepPoints: 500,
   },
 } as const;
 

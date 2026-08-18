@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Users, Clock, Gift, Coins } from "lucide-react";
+import { Users, Clock, Gift, Coins, UserPlus } from "lucide-react";
 import { getSessionUser } from "@/server/auth/session";
 import { getReferralOverview } from "@/server/services/referral.service";
 import { ReferralStatus } from "@/lib/enums";
@@ -9,7 +9,8 @@ import { Card, CardBody } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/States";
 import { ReferralShare } from "@/components/referral/ReferralShare";
-import { formatDate } from "@/lib/utils";
+import { Hi } from "@/components/ui/Bilingual";
+import { cn, formatDate } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Referrals", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -27,6 +28,43 @@ function statusBadge(status: string) {
   }
 }
 
+/**
+ * Who invited this member.
+ *
+ * The shortened display name and nothing else — no email, no city, no link
+ * through to them. Being handed someone's referral code is not consent to be
+ * looked up, and this page is the referred person's view, not the admin one.
+ */
+function JoinedThrough({ name }: { name: string | null }) {
+  return (
+    <Card className="mt-6">
+      <CardBody className="flex items-center gap-3">
+        <span
+          className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+            name ? "bg-accent-50 text-accent-600" : "bg-ink-100 text-ink-500",
+          )}
+        >
+          <UserPlus size={20} />
+        </span>
+        {/* min-w-0 + break-words: names are user-supplied and can be long
+            enough to push the card past 360px otherwise. */}
+        <div className="min-w-0">
+          <p className="text-sm text-ink-500">
+            {name ? "You joined through" : "You signed up on your own"}
+            <Hi inline className="ml-1.5">
+              {name ? "आप इनके ज़रिए जुड़े" : "आपने सीधे साइन अप किया"}
+            </Hi>
+          </p>
+          <p className="font-semibold break-words text-ink-900">
+            {name ?? "Direct signup"}
+          </p>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
 export default async function ReferralsPage() {
   const session = await getSessionUser();
   const data = await getReferralOverview(session!.id);
@@ -40,6 +78,8 @@ export default async function ReferralsPage() {
         shareLink={data.shareLink}
         perReferralPoints={data.perReferralPoints}
       />
+
+      <JoinedThrough name={data.referredBy} />
 
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Total invites" value={data.stats.total} icon={<Users size={22} />} tone="brand" isPoints={false} />
@@ -91,13 +131,15 @@ export default async function ReferralsPage() {
               <ul className="space-y-3 sm:hidden">
                 {data.referrals.map((r) => (
                   <li key={r.id} className="rounded-xl border border-ink-200 p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-ink-800">{r.name}</span>
-                      {statusBadge(r.status)}
+                    <div className="flex items-start justify-between gap-2">
+                      {/* Names are user-supplied and can be long; they wrap
+                          rather than push the status badge off the card. */}
+                      <span className="min-w-0 font-medium break-words text-ink-800">{r.name}</span>
+                      <span className="shrink-0">{statusBadge(r.status)}</span>
                     </div>
-                    <div className="mt-1 flex items-center justify-between text-sm text-ink-500">
+                    <div className="mt-1 flex items-center justify-between gap-2 text-sm text-ink-500">
                       <span>{formatDate(r.joinedAt)}</span>
-                      <span className="font-semibold text-brand-700">
+                      <span className="shrink-0 font-semibold tabular-nums text-brand-700">
                         {r.status === ReferralStatus.REWARDED ? `+${r.rewardPoints} pts` : "—"}
                       </span>
                     </div>

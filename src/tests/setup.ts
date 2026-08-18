@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 import { afterAll, afterEach } from "vitest";
 
 // Register hooks synchronously (before any await) so Vitest keeps their context.
-let replset: MongoMemoryReplSet | undefined;
 
 afterEach(async () => {
   const collections = mongoose.connection.collections;
@@ -23,7 +22,7 @@ process.env.MONGODB_DB_NAME = "test";
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || "test-secret-please-change-1234567890";
 
 // Start a single-node replica set so Mongo transactions work in tests.
-replset = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
+const replset = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
 process.env.MONGODB_URI = replset.getUri();
 
 // Connect via the app's own helper (registers models) and build unique indexes.

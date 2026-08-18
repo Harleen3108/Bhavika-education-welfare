@@ -30,11 +30,13 @@ export function LeaderboardList({ rows }: { rows: LeaderRow[] }) {
           >
             {r.rank}
           </span>
-          <Avatar src={r.avatarUrl} name={r.name} size={36} className="h-9 w-9" />
-          <span className="min-w-0 flex-1 truncate font-medium text-ink-800">
+          <Avatar src={r.avatarUrl} name={r.name} size={36} className="h-9 w-9 shrink-0" />
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-800 sm:text-base">
             {r.name} {r.isMe && <span className="text-xs text-brand-700">(You)</span>}
           </span>
-          <span className="shrink-0 font-semibold text-brand-700">{formatPoints(r.points)}</span>
+          <span className="shrink-0 font-semibold tabular-nums text-brand-700">
+            {formatPoints(r.points)}
+          </span>
         </li>
       ))}
     </ul>

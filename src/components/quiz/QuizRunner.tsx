@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Clock, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
-import { Skeleton, SkeletonScreen } from "@/components/ui/Skeleton";
 import { Spinner } from "@/components/ui/States";
 import { QuizTimer } from "@/components/quiz/QuizTimer";
 import { QuizResult } from "@/components/quiz/QuizResult";
@@ -31,8 +30,17 @@ export function QuizRunner({
   const [result, setResult] = React.useState<ResultDTO | null>(null);
   const submittingRef = React.useRef(false);
 
-  const start = React.useCallback(async () => {
-    setPhase("loading");
+  const startedRef = React.useRef(false);
+
+  /*
+    No synchronous setState here: the first statement awaits, so every state
+    update lands in an async continuation rather than in the effect body that
+    calls it. The ref guard keeps StrictMode's double-invoked effect (and a
+    double tap on Start) from opening two server-side attempts for one quiz.
+  */
+  const load = React.useCallback(async () => {
+    if (startedRef.current) return;
+    startedRef.current = true;
     try {
       const res = await fetch(`/api/quizzes/${slug}/start`, { method: "POST" });
       const json = await res.json();
@@ -49,9 +57,21 @@ export function QuizRunner({
     }
   }, [slug, router]);
 
+  const start = React.useCallback(() => {
+    setPhase("loading");
+    void load();
+  }, [load]);
+
+  /*
+    `load` runs as a microtask callback rather than straight from the effect
+    body. Nothing here updates state synchronously — `phase` is already
+    "loading" whenever autoStart is set — but react-hooks/set-state-in-effect
+    reasons about whether a callee touches state at all, not about when. Handing
+    it to .then() puts the work where the rule expects side effects to live.
+  */
   React.useEffect(() => {
-    if (autoStart) start();
-  }, [autoStart, start]);
+    if (autoStart) void Promise.resolve().then(load);
+  }, [autoStart, load]);
 
   const submit = React.useCallback(async () => {
     if (!data || submittingRef.current) return;
@@ -130,10 +150,12 @@ export function QuizRunner({
   return (
     <div className="mx-auto max-w-2xl">
       {/* Sticky status bar */}
-      <div className="sticky top-16 z-20 mb-5 rounded-2xl border border-ink-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur lg:top-4">
+      <div className="sticky top-16 z-20 mb-5 rounded-2xl border border-ink-200 bg-white/95 px-3.5 py-3 shadow-sm backdrop-blur sm:px-4 lg:top-4">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate font-semibold text-ink-900">{data.quizTitle}</p>
+            <p className="truncate text-sm font-semibold text-ink-900 sm:text-base">
+              {data.quizTitle}
+            </p>
             <p className="text-xs text-ink-500">
               {answeredCount}/{data.questions.length} answered
             </p>
@@ -160,7 +182,7 @@ export function QuizRunner({
         {data.questions.map((q, i) => (
           <Card key={q.id}>
             <CardBody>
-              <p className="font-medium text-ink-800">
+              <p className="font-medium break-words text-ink-800">
                 <span className="text-ink-400">{i + 1}.</span> {q.text}
               </p>
               <div className="mt-4 grid gap-2.5">
@@ -172,7 +194,10 @@ export function QuizRunner({
                       type="button"
                       onClick={() => setAnswers((a) => ({ ...a, [q.id]: idx }))}
                       className={cn(
-                        "flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-colors",
+                        // items-start + min-h-11: an option wraps to several
+                        // lines at 360px, and every option is a primary tap
+                        // target so none may fall under the 44px minimum.
+                        "flex min-h-11 w-full items-start gap-3 rounded-xl border px-3.5 py-3 text-left text-sm transition-colors sm:px-4",
                         selected
                           ? "border-brand-500 bg-brand-50 text-brand-700"
                           : "border-ink-200 hover:border-brand-300 hover:bg-ink-50",
@@ -180,13 +205,13 @@ export function QuizRunner({
                     >
                       <span
                         className={cn(
-                          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-[10px] font-bold",
+                          "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-[10px] font-bold",
                           selected ? "border-brand-500 bg-brand-500 text-white" : "border-ink-300 text-transparent",
                         )}
                       >
                         {String.fromCharCode(65 + idx)}
                       </span>
-                      <span>{opt}</span>
+                      <span className="min-w-0 flex-1 break-words">{opt}</span>
                     </button>
                   );
                 })}
@@ -196,7 +221,12 @@ export function QuizRunner({
         ))}
       </div>
 
-      <div className="sticky bottom-0 mt-6 border-t border-ink-100 bg-background/90 py-4 backdrop-blur">
+      {/*
+        Submit stays reachable without scrolling to the end of a long quiz.
+        The bottom pad clears the gesture bar on phones that report a safe-area
+        inset, and falls back to the plain 1rem everywhere else.
+      */}
+      <div className="sticky bottom-0 mt-6 border-t border-ink-100 bg-background/90 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur">
         {answeredCount < data.questions.length && (
           <p className="mb-2 text-center text-sm text-warning">
             {data.questions.length - answeredCount} question(s) unanswered.

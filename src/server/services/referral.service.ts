@@ -6,7 +6,7 @@ import { User, Referral, QuizAttempt } from "@/server/models";
 import { ReferralStatus, AccountStatus, AttemptStatus, PointSource } from "@/lib/enums";
 import { REFERRAL_CODE_LENGTH } from "@/lib/constants";
 import { SITE } from "@/lib/constants";
-import { env, getAppBaseUrl } from "@/lib/env";
+import { getAppBaseUrl } from "@/lib/env";
 import { getSettings } from "./content.service";
 import { creditPoints } from "./wallet.service";
 import { sendReferralJoinedEmail } from "./email.service";

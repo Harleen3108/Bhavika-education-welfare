@@ -9,14 +9,29 @@ import { getSettings } from "./content.service";
 import { creditPoints } from "./wallet.service";
 import { createSignedToken } from "@/server/integrations/signing";
 
-const MIN_REDEEM = 100;
-
 export type RedemptionState = {
   enabled: boolean;
   balance: number;
+  /** Points needed before redeeming is possible at all. */
   minRedeem: number;
+  /** Points that buy one rupee of coupon value. */
+  pointsPerRupee: number;
+  /** Redemptions must be a whole multiple of this. */
+  stepPoints: number;
+  /** Coupon value the member's current balance is worth, in whole rupees. */
+  balanceValue: number;
+  /** Points still needed to reach the threshold; 0 once eligible. */
+  pointsToGo: number;
+  /** The largest redeemable amount available right now, in points. */
+  maxRedeemable: number;
   externalConfigured: boolean;
 };
+
+/** Coupon value in whole rupees for a given number of points. */
+export function pointsToRupees(points: number, pointsPerRupee: number): number {
+  if (pointsPerRupee <= 0) return 0;
+  return Math.floor(points / pointsPerRupee);
+}
 
 export async function getRedemptionState(userId: string): Promise<RedemptionState> {
   await dbConnect();
@@ -24,10 +39,31 @@ export async function getRedemptionState(userId: string): Promise<RedemptionStat
     getSettings(),
     Wallet.findOne({ user: userId }).lean(),
   ]);
+
+  const { redemptionEnabled, minRedeemPoints, pointsPerRupee, redeemStepPoints } =
+    settings.integration;
+  const balance = wallet?.totalBalance ?? 0;
+
+  // Round DOWN to the step so the figure offered is always actually redeemable;
+  // offering a number the server would then reject reads as a broken promise.
+  // The step is guarded like the rate above: `Math.floor(n / 0) * 0` is NaN, not
+  // Infinity, and a NaN here would travel into the member's page as the amount
+  // they may redeem. The admin form can no longer save a zero, but a settings
+  // document written by hand can still hold one.
+  const maxRedeemable =
+    redeemStepPoints > 0 && balance >= minRedeemPoints
+      ? Math.floor(balance / redeemStepPoints) * redeemStepPoints
+      : 0;
+
   return {
-    enabled: settings.integration.redemptionEnabled,
-    balance: wallet?.totalBalance ?? 0,
-    minRedeem: MIN_REDEEM,
+    enabled: redemptionEnabled,
+    balance,
+    minRedeem: minRedeemPoints,
+    pointsPerRupee,
+    stepPoints: redeemStepPoints,
+    balanceValue: pointsToRupees(balance, pointsPerRupee),
+    pointsToGo: Math.max(0, minRedeemPoints - balance),
+    maxRedeemable,
     externalConfigured: Boolean(env.JMD_INTEGRATION_URL && env.JMD_INTEGRATION_SECRET),
   };
 }
@@ -54,8 +90,27 @@ export async function initiateRedemption(
   if (!env.JMD_INTEGRATION_URL || !env.JMD_INTEGRATION_SECRET) {
     throw new DomainError("Redemption is not fully configured yet.", 503, "NOT_CONFIGURED");
   }
-  if (!Number.isInteger(points) || points < MIN_REDEEM) {
-    throw new DomainError(`Minimum redemption is ${MIN_REDEEM} points.`, 400, "MIN_REDEEM");
+
+  // Every rule is re-checked here against live settings. The client is shown the
+  // same numbers, but it is never the authority on them.
+  const { minRedeemPoints, redeemStepPoints } = settings.integration;
+
+  if (!Number.isInteger(points) || points <= 0) {
+    throw new DomainError("Enter a whole number of points.", 400, "INVALID_AMOUNT");
+  }
+  if (points < minRedeemPoints) {
+    throw new DomainError(
+      `You need at least ${minRedeemPoints.toLocaleString("en-IN")} points to redeem.`,
+      400,
+      "MIN_REDEEM",
+    );
+  }
+  if (points % redeemStepPoints !== 0) {
+    throw new DomainError(
+      `Redeem in multiples of ${redeemStepPoints.toLocaleString("en-IN")} points.`,
+      400,
+      "STEP_REDEEM",
+    );
   }
 
   const wallet = await Wallet.findOne({ user: userId }).lean();

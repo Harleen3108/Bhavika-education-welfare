@@ -1,5 +1,5 @@
 import "server-only";
-import type { Types } from "mongoose";
+import { Types } from "mongoose";
 import { fromZonedTime } from "date-fns-tz";
 import { dbConnect } from "@/server/db/connect";
 import {
@@ -45,6 +45,18 @@ function dayBoundary(value: string | undefined, edge: "start" | "end"): Date | n
   const wall = `${value}T${edge === "start" ? "00:00:00.000" : "23:59:59.999"}`;
   const d = fromZonedTime(wall, SITE.timezone);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * A filter value that is safe in an aggregation pipeline.
+ *
+ * `find()` casts a 24-hex string to an ObjectId from the schema; `aggregate()`
+ * does not — the pipeline is sent to the server verbatim. A filter shared
+ * between the two therefore has to carry a real ObjectId, or the `$match`
+ * silently matches nothing while the `find()` beside it returns rows.
+ */
+function objectId(value: string): Types.ObjectId | null {
+  return /^[a-f\d]{24}$/i.test(value) ? new Types.ObjectId(value) : null;
 }
 
 // ---- Simple content collections (all items, admin view) ----
@@ -311,6 +323,38 @@ export async function adminSearchMembers(q: string, limit = 8) {
   }));
 }
 
+export type AdminMemberBrief = {
+  id: string;
+  name: string;
+  email: string;
+  referralCode: string;
+  status: string;
+  avatarUrl: string;
+  balance: number;
+};
+
+/**
+ * The same shape the typeahead returns, for one known member. The wallet page
+ * uses it to name the member a `?userId=` filter is pinned to — including when
+ * that member has no transactions yet and the ledger rows cannot supply a name.
+ */
+export async function adminGetMemberBrief(userId: string): Promise<AdminMemberBrief | null> {
+  if (!objectId(userId)) return null;
+  await dbConnect();
+  const user = await User.findById(userId).select("name email referralCode status avatarUrl").lean();
+  if (!user) return null;
+  const wallet = await Wallet.findOne({ user: user._id }).select("totalBalance").lean();
+  return {
+    id: id(user),
+    name: user.name,
+    email: user.email,
+    referralCode: user.referralCode,
+    status: user.status,
+    avatarUrl: user.avatarUrl ?? "",
+    balance: wallet?.totalBalance ?? 0,
+  };
+}
+
 export async function adminGetUserDetail(userId: string) {
   await dbConnect();
   const user = await User.findById(userId).lean();
@@ -436,7 +480,12 @@ export async function adminListTransactions(opts: AdminTxnFilters) {
   if (opts.type) filter.type = opts.type;
 
   if (opts.userId) {
-    filter.user = opts.userId;
+    /*
+      A malformed id narrows to nothing rather than falling back to the whole
+      ledger: a filter that quietly stops filtering is how an admin ends up
+      reading someone else's balance as if it were the member they picked.
+    */
+    filter.user = objectId(opts.userId) ?? { $in: [] };
   } else {
     const term = opts.q?.trim();
     if (term) {

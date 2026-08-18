@@ -11,9 +11,10 @@ export function PageHeader({
 }) {
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 className="text-2xl font-bold text-ink-900 sm:text-3xl">{title}</h1>
-        {description && <p className="mt-1 text-ink-600">{description}</p>}
+      {/* Titles interpolate a member's name, so they must be allowed to break. */}
+      <div className="min-w-0">
+        <h1 className="text-2xl font-bold break-words text-ink-900 sm:text-3xl">{title}</h1>
+        {description && <p className="mt-1 text-sm text-ink-600 sm:text-base">{description}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>

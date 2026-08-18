@@ -81,7 +81,8 @@ export default async function WalletPage({
                     key={f.label}
                     href={href}
                     className={cn(
-                      "rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
+                      // 32px pills are below the 44px touch minimum on a phone.
+                      "inline-flex min-h-11 items-center rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors sm:min-h-0",
                       active ? "bg-brand-600 text-white" : "bg-ink-100 text-ink-700 hover:bg-ink-200",
                     )}
                   >

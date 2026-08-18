@@ -32,8 +32,14 @@ export default async function ContactPage() {
 
       <Section>
         <Container className="grid gap-8 lg:grid-cols-[1fr_1.2fr] lg:gap-12">
-          {/* Info column */}
-          <div className="space-y-4">
+          {/* Info column.
+              min-w-0: below `lg` this grid has no explicit template, so its one
+              implicit track is `auto` and refuses to size below the widest
+              item's min-content. A ContactRow's nowrap email set that to 406px
+              and the page overflowed a 360px phone by 64px — `truncate` alone
+              cannot help, because a flex item still contributes its nowrap
+              min-content to the track unless its minimum is explicitly zero. */}
+          <div className="min-w-0 space-y-4">
             <ContactRow icon={<Mail size={20} />} label="Email" href={`mailto:${info.email}`}>
               {info.email}
             </ContactRow>
@@ -66,7 +72,7 @@ export default async function ContactPage() {
           </div>
 
           {/* Form column */}
-          <Card>
+          <Card className="min-w-0">
             <CardBody className="sm:p-8">
               <h2 className="text-xl font-bold text-ink-900">Send us a message</h2>
               <p className="mt-1 mb-6 text-sm text-ink-500">

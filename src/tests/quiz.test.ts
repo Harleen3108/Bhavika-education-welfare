@@ -5,8 +5,15 @@ import { QuizAttempt } from "@/server/models";
 import { AccountStatus } from "@/lib/enums";
 import { makeUser, makeQuiz } from "./helpers";
 
-function correctAnswers(quizDoc: any, questions: { id: string }[]) {
-  const byId = new Map(quizDoc.questions.map((q: any) => [q._id.toString(), q.correctIndex]));
+/** The subset of a Quiz document this helper reads, rather than `any`. */
+type QuizWithAnswers = {
+  questions: { _id: { toString(): string }; correctIndex: number }[];
+};
+
+function correctAnswers(quizDoc: QuizWithAnswers, questions: { id: string }[]) {
+  const byId = new Map(
+    quizDoc.questions.map((q) => [q._id.toString(), q.correctIndex] as const),
+  );
   return questions.map((q) => ({ questionId: q.id, selectedIndex: byId.get(q.id) as number }));
 }
 

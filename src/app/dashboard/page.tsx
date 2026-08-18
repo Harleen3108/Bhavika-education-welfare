@@ -58,15 +58,22 @@ export default async function DashboardPage() {
         <StatCard label="Activity points" value={data.wallet.activity} icon={<Sparkles size={22} />} tone="neutral" />
       </div>
 
+      {/*
+        min-w-0 on both columns is load-bearing, not decorative. Below `lg` this
+        grid has no explicit template, so its single implicit track is `auto`:
+        the track refuses to size below the widest item's min-content. A long
+        one-line transaction description made that 812px and the whole page
+        overflowed a 360px phone by 468px. min-width:0 lets the track shrink.
+      */}
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         {/* Left column */}
-        <div className="space-y-6 lg:col-span-2">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           {/* Available quizzes */}
           <Card>
             <CardBody>
               <div className="mb-4 flex items-center justify-between">
                 <CardTitle>Available quizzes</CardTitle>
-                <Link href="/dashboard/quizzes" className="text-sm font-semibold text-brand-700 hover:text-brand-700">
+                <Link href="/dashboard/quizzes" className="-my-2 inline-flex min-h-11 shrink-0 items-center text-sm font-semibold text-brand-700 hover:text-brand-700 sm:my-0 sm:min-h-0">
                   View all →
                 </Link>
               </div>
@@ -82,7 +89,7 @@ export default async function DashboardPage() {
             <CardBody>
               <div className="mb-2 flex items-center justify-between">
                 <CardTitle>Recent activity</CardTitle>
-                <Link href="/dashboard/wallet" className="text-sm font-semibold text-brand-700 hover:text-brand-700">
+                <Link href="/dashboard/wallet" className="-my-2 inline-flex min-h-11 shrink-0 items-center text-sm font-semibold text-brand-700 hover:text-brand-700 sm:my-0 sm:min-h-0">
                   Wallet →
                 </Link>
               </div>
@@ -101,7 +108,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Right column */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {/* Referral summary */}
           <Card>
             <CardBody>
@@ -117,7 +124,7 @@ export default async function DashboardPage() {
                   {data.referrals.code || "—"}
                 </p>
               </div>
-              <ButtonLink href="/dashboard/referrals" variant="outline" className="mt-4 w-full" size="sm">
+              <ButtonLink href="/dashboard/referrals" variant="outline" className="mt-4 h-11 w-full sm:h-9" size="sm">
                 Invite friends <ArrowRight size={16} />
               </ButtonLink>
             </CardBody>
@@ -128,7 +135,7 @@ export default async function DashboardPage() {
             <CardBody>
               <div className="mb-3 flex items-center justify-between">
                 <CardTitle>Top learners</CardTitle>
-                <Link href="/dashboard/leaderboard" className="text-sm font-semibold text-brand-700 hover:text-brand-700">
+                <Link href="/dashboard/leaderboard" className="-my-2 inline-flex min-h-11 shrink-0 items-center text-sm font-semibold text-brand-700 hover:text-brand-700 sm:my-0 sm:min-h-0">
                   Full board →
                 </Link>
               </div>
@@ -177,8 +184,11 @@ function QuizCard({
         <Badge tone={kind === "Daily" ? "brand" : "accent"}>{kind}</Badge>
         {quiz.attemptedThisPeriod && <Badge tone="success">Completed</Badge>}
       </div>
-      <p className="mt-2 line-clamp-1 font-semibold text-ink-900">{quiz.title}</p>
-      <div className="mt-1 flex items-center gap-3 text-xs text-ink-500">
+      {/* Two lines below sm: a long weekly title is unreadable clipped to one on a phone. */}
+      <p className="mt-2 line-clamp-2 font-semibold break-words text-ink-900 sm:line-clamp-1">
+        {quiz.title}
+      </p>
+      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-500">
         <span>{quiz.questionCount} questions</span>
         <span className="flex items-center gap-1">
           <Clock size={12} /> {Math.round(quiz.timeLimitSeconds / 60)} min
@@ -188,7 +198,7 @@ function QuizCard({
         href={`/dashboard/quizzes/${quiz.slug}`}
         size="sm"
         variant={quiz.attemptedThisPeriod ? "outline" : "primary"}
-        className="mt-3"
+        className="mt-3 h-11 sm:h-9"
       >
         {quiz.attemptedThisPeriod ? "View result" : "Start quiz"}
       </ButtonLink>
