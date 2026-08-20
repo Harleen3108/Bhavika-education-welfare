@@ -167,6 +167,44 @@ export const adminCreateUserSchema = z.object({
 });
 export type AdminCreateUserInput = z.infer<typeof adminCreateUserSchema>;
 
+/**
+ * Per-member redemption override. The reason is optional but lands in the audit
+ * log, so an admin freezing an account leaves a trace of why.
+ */
+export const userRedemptionSchema = z.object({
+  userId: objectId,
+  blocked: z.boolean(),
+  reason: z.string().trim().max(300).optional().or(z.literal("")),
+});
+export type UserRedemptionInput = z.infer<typeof userRedemptionSchema>;
+
+/**
+ * Admin-issued coupon.
+ *
+ * PROMO mints free value (source ADMIN, no points touched); POINTS spends the
+ * member's own balance at the live rate. `valueRupees` is the face value in
+ * whole rupees either way — capped so a slip of the keyboard cannot mint a
+ * fortune, and a mandatory reason records why value was granted.
+ */
+export const adminIssueCouponSchema = z.object({
+  userId: objectId,
+  mode: z.enum(["PROMO", "POINTS"]),
+  valueRupees: z.coerce
+    .number()
+    .int("Enter a whole rupee amount.")
+    .min(1, "A coupon must be worth at least ₹1.")
+    .max(100000, "That is larger than any single coupon should be."),
+  reason: z.string().trim().min(3, "A reason is required.").max(300),
+});
+export type AdminIssueCouponInput = z.infer<typeof adminIssueCouponSchema>;
+
+/** Void / reactivate / force-expire a single coupon. */
+export const couponActionSchema = z.object({
+  action: z.enum(["void", "reactivate", "expire"]),
+  reason: z.string().trim().max(300).optional().or(z.literal("")),
+});
+export type CouponActionInput = z.infer<typeof couponActionSchema>;
+
 export const contactStatusSchema = z.object({
   id: z.string().regex(/^[a-f\d]{24}$/i),
   status: z.enum([ContactStatus.NEW, ContactStatus.READ, ContactStatus.RESPONDED, ContactStatus.SPAM]),

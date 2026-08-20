@@ -24,7 +24,8 @@ export const dynamic = "force-dynamic";
 const STATUS_RANK: Record<CouponStatus, number> = {
   [CouponStatus.ACTIVE]: 0,
   [CouponStatus.REDEEMED]: 1,
-  [CouponStatus.EXPIRED]: 2,
+  [CouponStatus.VOID]: 2,
+  [CouponStatus.EXPIRED]: 3,
 };
 
 function sortForMember(coupons: CouponDTO[]): CouponDTO[] {
@@ -85,7 +86,7 @@ export default async function BenefitsPage() {
       {/* Mirrors PageHeader's shape, with the Hindi line it has no slot for —
           this is a member-facing surface and the heading must be bilingual. */}
       <div className="mb-6 min-w-0">
-        <h1 className="text-2xl font-bold break-words text-ink-900 sm:text-3xl">
+        <h1 className="text-2xl font-bold wrap-break-word text-ink-900 sm:text-3xl">
           Turn points into a coupon
         </h1>
         <Hi className="mt-1 block text-lg text-brand-700">पॉइंट्स से कूपन बनाएँ</Hi>

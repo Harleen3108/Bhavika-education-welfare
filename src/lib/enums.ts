@@ -89,18 +89,23 @@ export type LeaderboardPeriod = (typeof LeaderboardPeriod)[keyof typeof Leaderbo
 export const CouponStatus = {
   ACTIVE: "ACTIVE", // issued, unused, not yet past expiresAt
   REDEEMED: "REDEEMED", // spent at the partner store (exactly once)
-  EXPIRED: "EXPIRED", // lapsed unused — points are forfeited, never refunded
+  EXPIRED: "EXPIRED", // lapsed unused — points are forfeited on a time lapse
+  VOID: "VOID", // deactivated by an admin — a store will not honour it (reversible)
 } as const;
 export type CouponStatus = (typeof CouponStatus)[keyof typeof CouponStatus];
 
 /**
  * Where a coupon's value came from. Printed on the coupon ("Generated From:
- * Points") per the written specification, which is also why this is an enum
- * with a single member today: a future promotional or admin-granted coupon is
- * then a new value here rather than a schema change.
+ * Points") per the written specification.
+ *
+ * `ADMIN` is a coupon an administrator granted directly — a gift, a
+ * compensation, a campaign — that a member did NOT pay points for. The
+ * distinction is load-bearing: only a POINTS coupon has points to refund when
+ * it is voided or force-expired, so refund logic keys off this field.
  */
 export const CouponSource = {
   POINTS: "POINTS",
+  ADMIN: "ADMIN",
 } as const;
 export type CouponSource = (typeof CouponSource)[keyof typeof CouponSource];
 

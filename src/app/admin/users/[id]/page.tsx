@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
+  Ban,
   Gift,
   MailCheck,
   MailX,
@@ -80,6 +81,11 @@ export default async function AdminUserDetailPage({
             <Badge tone="accent">
               <Ticket size={12} /> {user.referralCode}
             </Badge>
+            {user.redemptionBlocked && (
+              <Badge tone="danger">
+                <Ban size={12} /> Redemption blocked
+              </Badge>
+            )}
           </div>
         </div>
       </div>
@@ -101,6 +107,7 @@ export default async function AdminUserDetailPage({
                   userId={user.id}
                   status={user.status}
                   emailVerified={user.emailVerified}
+                  redemptionBlocked={user.redemptionBlocked}
                   member={{
                     id: user.id,
                     name: user.name,
@@ -182,7 +189,7 @@ export default async function AdminUserDetailPage({
                     This member has not invited anyone yet.
                   </p>
                 ) : (
-                  <ul className="divide-y divide-ink-100 rounded-xl border border-ink-200">
+                  <ul className="rounded-xl border border-ink-200 [&>li+li]:border-t [&>li+li]:border-ink-100">
                     {user.referrals.map((r) => (
                       <li
                         key={r.id}

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/States";
 import { Pagination } from "@/components/ui/Pagination";
 import { CouponsTable } from "@/components/admin/CouponsTable";
+import { IssueCouponButton } from "@/components/admin/IssueCouponButton";
 import { adminListCoupons } from "@/server/services/admin-read.service";
 import { getCouponPolicy } from "@/server/services/coupon.service";
 import { CouponStatus } from "@/lib/enums";
@@ -30,6 +31,7 @@ const STATUS_LABELS: Record<string, string> = {
   [CouponStatus.ACTIVE]: "Active — still usable",
   [CouponStatus.REDEEMED]: "Redeemed — spent at the store",
   [CouponStatus.EXPIRED]: "Expired — points forfeited",
+  [CouponStatus.VOID]: "Void — deactivated by admin",
 };
 
 type Search = { q?: string; status?: string; page?: string };
@@ -150,6 +152,15 @@ export default async function AdminCouponsPage({
             {totals.expiredCount === 1 ? "" : "s"} expired unused — the{" "}
             {formatPoints(totals.forfeitedPoints)} points behind it were forfeited and are never
             owed again. Neither counts towards the liability.
+            {totals.voidedCount > 0 && (
+              <>
+                {" "}
+                A further {formatPoints(totals.voidedCount)} coupon
+                {totals.voidedCount === 1 ? "" : "s"} worth {rupees(totals.voidedRupees)}{" "}
+                {totals.voidedCount === 1 ? "was" : "were"} deactivated by an admin and their points
+                refunded — also off the liability.
+              </>
+            )}
           </p>
           {filtered && (
             <p className="mt-2 text-xs text-ink-500">
@@ -215,13 +226,16 @@ export default async function AdminCouponsPage({
       </Card>
 
       <section className="mt-6">
-        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-semibold text-ink-900">Issued coupons</h2>
-          <p className="text-sm text-ink-500">
-            {data.total === 0
-              ? "No coupons"
-              : `Showing ${formatPoints(from)}–${formatPoints(to)} of ${formatPoints(data.total)}`}
-          </p>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-ink-900">Issued coupons</h2>
+            <p className="text-sm text-ink-500">
+              {data.total === 0
+                ? "No coupons"
+                : `Showing ${formatPoints(from)}–${formatPoints(to)} of ${formatPoints(data.total)}`}
+            </p>
+          </div>
+          <IssueCouponButton />
         </div>
 
         <CouponsTable items={data.items} filtered={filtered} />

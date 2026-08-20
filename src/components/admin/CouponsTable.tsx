@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/States";
+import { CouponActions } from "@/components/admin/CouponActions";
 import { CouponStatus } from "@/lib/enums";
 import { formatDate, formatPoints } from "@/lib/utils";
 
@@ -26,19 +27,22 @@ type Coupon = {
   pointsSpent: number;
   /** Effective status — the service has already applied the clock. */
   status: string;
+  source: string;
   issuedAt: string;
   expiresAt: string;
   redeemedAt: string | null;
+  refundedAt: string | null;
   externalRef: string | null;
   daysRemaining: number;
 };
 
 const rupees = (n: number) => `₹${formatPoints(n)}`;
 
-function statusTone(status: string): "accent" | "success" | "danger" | "neutral" {
+function statusTone(status: string): "accent" | "success" | "danger" | "neutral" | "warning" {
   if (status === CouponStatus.ACTIVE) return "accent";
   if (status === CouponStatus.REDEEMED) return "success";
   if (status === CouponStatus.EXPIRED) return "danger";
+  if (status === CouponStatus.VOID) return "warning";
   return "neutral";
 }
 
@@ -54,7 +58,13 @@ function statusDetail(c: Coupon): string {
   if (c.status === CouponStatus.REDEEMED) {
     return c.redeemedAt ? `Used ${formatDate(c.redeemedAt)}` : "Used";
   }
-  return `${formatPoints(c.pointsSpent)} points forfeited`;
+  if (c.status === CouponStatus.VOID) {
+    return c.refundedAt ? `Deactivated — ${formatPoints(c.pointsSpent)} points refunded` : "Deactivated by admin";
+  }
+  // EXPIRED — refunded only if an admin forced it; a lapse forfeits.
+  return c.refundedAt
+    ? `Expired — ${formatPoints(c.pointsSpent)} points refunded`
+    : `${formatPoints(c.pointsSpent)} points forfeited`;
 }
 
 function CopyCode({ code }: { code: string }) {
@@ -141,6 +151,14 @@ function CouponCard({ c }: { c: Coupon }) {
             </div>
           )}
         </dl>
+
+        {(c.status === CouponStatus.ACTIVE || c.status === CouponStatus.VOID) && (
+          <div className="mt-3 border-t border-ink-100 pt-3">
+            <CouponActions
+              coupon={{ id: c.id, code: c.code, status: c.status, pointsSpent: c.pointsSpent }}
+            />
+          </div>
+        )}
       </CardBody>
     </Card>
   );
@@ -175,6 +193,11 @@ function CouponRow({ c }: { c: Coupon }) {
       </td>
       <td className="max-w-40 px-4 py-3 font-mono text-xs wrap-anywhere text-ink-600">
         {c.externalRef ?? <span className="font-sans text-ink-400">—</span>}
+      </td>
+      <td className="px-4 py-3">
+        <CouponActions
+          coupon={{ id: c.id, code: c.code, status: c.status, pointsSpent: c.pointsSpent }}
+        />
       </td>
     </tr>
   );
@@ -231,6 +254,7 @@ export function CouponsTable({ items, filtered }: { items: Coupon[]; filtered: b
                 <th className="px-4 py-3 font-medium">Issued</th>
                 <th className="px-4 py-3 font-medium">Expires</th>
                 <th className="px-4 py-3 font-medium">Store ref</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-100">

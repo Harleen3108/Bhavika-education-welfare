@@ -1,8 +1,8 @@
 import "server-only";
-import type { ClientSession } from "mongoose";
+import type { ClientSession, HydratedDocument } from "mongoose";
 import { customAlphabet } from "nanoid";
 import { dbConnect, withTransaction } from "@/server/db/connect";
-import { Coupon, Wallet, WalletTransaction, type ICoupon, type IWallet } from "@/server/models";
+import { Coupon, User, Wallet, WalletTransaction, type ICoupon, type IWallet } from "@/server/models";
 import {
   CouponStatus,
   CouponSource,
@@ -41,12 +41,14 @@ export type CouponDTO = {
   issuedAt: string;
   expiresAt: string;
   redeemedAt: string | null;
+  /** Set when an admin returned the points on a void or force-expire. */
+  refundedAt: string | null;
   externalRef: string | null;
   /** Whole days left before forfeit. 0 once redeemed or expired. */
   daysRemaining: number;
 };
 
-export type CouponInvalidReason = "NOT_FOUND" | "ALREADY_REDEEMED" | "EXPIRED";
+export type CouponInvalidReason = "NOT_FOUND" | "ALREADY_REDEEMED" | "EXPIRED" | "VOID";
 
 export type CouponValidation = {
   valid: boolean;
@@ -96,6 +98,7 @@ function toDTO(coupon: ICoupon, now = new Date()): CouponDTO {
     issuedAt: coupon.issuedAt.toISOString(),
     expiresAt: coupon.expiresAt.toISOString(),
     redeemedAt: coupon.redeemedAt ? coupon.redeemedAt.toISOString() : null,
+    refundedAt: coupon.refundedAt ? coupon.refundedAt.toISOString() : null,
     externalRef: coupon.externalRef ?? null,
     daysRemaining: status === CouponStatus.ACTIVE ? Math.max(0, Math.ceil(msLeft / DAY_MS)) : 0,
   };
@@ -207,6 +210,18 @@ export async function issueCoupon(userId: string, points: number): Promise<Coupo
       "Coupons aren't available yet. Coming soon!",
       403,
       "REDEMPTION_DISABLED",
+    );
+  }
+
+  // The per-member override sits on top of the global switch: an admin can stop
+  // one account converting points without disabling coupons for everyone. Read
+  // here, before any balance work, so a blocked member is turned away cleanly.
+  const account = await User.findById(userId).select("redemptionBlocked").lean();
+  if (account?.redemptionBlocked) {
+    throw new DomainError(
+      "Coupon generation is turned off for your account. Please contact support.",
+      403,
+      "REDEMPTION_BLOCKED",
     );
   }
 
@@ -346,6 +361,10 @@ export async function validateCoupon(code: string): Promise<CouponValidation> {
   if (dto.status === CouponStatus.EXPIRED) {
     return { valid: false, reason: "EXPIRED", coupon: dto };
   }
+  // Deactivated by an admin: a real coupon a store must nonetheless refuse.
+  if (dto.status === CouponStatus.VOID) {
+    return { valid: false, reason: "VOID", coupon: dto };
+  }
   return { valid: true, reason: null, coupon: dto };
 }
 
@@ -385,6 +404,9 @@ export async function redeemCoupon(code: string, externalRef: string): Promise<C
   }
   if (existing.status === CouponStatus.REDEEMED) {
     throw new DomainError("That coupon has already been used.", 409, "ALREADY_REDEEMED");
+  }
+  if (existing.status === CouponStatus.VOID) {
+    throw new DomainError("That coupon has been cancelled and cannot be used.", 409, "VOID");
   }
   if (existing.status === CouponStatus.EXPIRED || existing.expiresAt.getTime() <= now.getTime()) {
     throw new DomainError("That coupon has expired.", 410, "EXPIRED");
@@ -468,4 +490,361 @@ export async function expireCoupons(now = new Date()): Promise<ExpirySweepResult
   }
 
   return { expired, pointsForfeited };
+}
+
+/* ========================================================================== */
+/*                              Admin operations                              */
+/* ========================================================================== */
+
+export type AdminIssueMode = "PROMO" | "POINTS";
+
+export type AdminIssueCouponInput = {
+  userId: string;
+  /** Face value in whole rupees the admin is granting or converting. */
+  valueRupees: number;
+  /**
+   * PROMO — a free coupon the member pays nothing for (source ADMIN).
+   * POINTS — issued on the member's behalf against their own points, at the
+   * live rate, exactly as if they had generated it themselves (source POINTS).
+   */
+  mode: AdminIssueMode;
+  adminId: string;
+};
+
+/**
+ * Why a `findOneAndUpdate` that gated on ACTIVE matched nothing. Read AFTER the
+ * conditional update failed, only to produce a precise message — the update,
+ * not this read, is the authority on the state.
+ */
+async function couponStateError(couponId: string, now: Date): Promise<DomainError> {
+  const doc = await Coupon.findById(couponId).lean();
+  if (!doc) return new DomainError("That coupon no longer exists.", 404, "NOT_FOUND");
+  if (doc.status === CouponStatus.REDEEMED) {
+    return new DomainError("That coupon has already been redeemed at the store.", 409, "REDEEMED");
+  }
+  if (doc.status === CouponStatus.VOID) {
+    return new DomainError("That coupon is already deactivated.", 409, "ALREADY_VOID");
+  }
+  if (doc.status === CouponStatus.EXPIRED || doc.expiresAt.getTime() <= now.getTime()) {
+    return new DomainError("That coupon has already expired.", 409, "ALREADY_EXPIRED");
+  }
+  return new DomainError("That coupon changed state before this could apply.", 409, "CONFLICT");
+}
+
+/**
+ * Return a POINTS coupon's spent points to the member, inside the caller's
+ * transaction. Keyed on the coupon's freshly-incremented `ledgerSeq` so a later
+ * void→reactivate→void cycle never reuses the same idempotency key. A no-op for
+ * an admin-granted (zero-point) coupon or one already refunded.
+ */
+async function refundCouponPoints(
+  coupon: HydratedDocument<ICoupon>,
+  session: ClientSession,
+  adminId: string,
+  actionLabel: string,
+  now: Date,
+): Promise<void> {
+  if (coupon.pointsSpent <= 0 || coupon.refundedAt) return;
+  const pts = coupon.pointsSpent;
+
+  const wallet = await Wallet.findOneAndUpdate(
+    { user: coupon.user },
+    { $inc: { totalBalance: pts, activityBalance: pts } },
+    { new: true, upsert: true, session },
+  );
+
+  await WalletTransaction.create(
+    [
+      {
+        user: coupon.user,
+        source: PointSource.ADJUSTMENT,
+        type: TransactionType.CREDIT,
+        points: pts,
+        balanceAfter: wallet.totalBalance,
+        referenceType: "CouponRefund",
+        referenceId: coupon._id,
+        description: `Coupon ${coupon.code} ${actionLabel} by admin — ${pts.toLocaleString("en-IN")} points refunded`,
+        status: TransactionStatus.COMPLETED,
+        idempotencyKey: `coupon-refund:${coupon.code}:${coupon.ledgerSeq}`,
+        createdBy: adminId,
+        meta: { couponCode: coupon.code, refundedPoints: pts, action: actionLabel },
+      },
+    ],
+    { session },
+  );
+
+  coupon.refundedAt = now;
+  await coupon.save({ session });
+}
+
+/**
+ * Take a still-usable coupon out of circulation and refund its points.
+ *
+ * Shared by "deactivate" (→ VOID, reversible) and "force-expire" (→ EXPIRED).
+ * The conditional `findOneAndUpdate` demands the coupon is ACTIVE and still in
+ * date, so it applies exactly once even under concurrent clicks, and a redeemed,
+ * already-void or lapsed coupon is refused with a precise reason. The status
+ * flip, the refund debit-reversal and the `refundedAt` stamp share ONE
+ * transaction — a crash can never leave a coupon dead with its points still
+ * spent, or refunded with its status unchanged.
+ *
+ * This refund is deliberate policy and the reason it differs from the automatic
+ * `expireCoupons` sweep, which forfeits: a coupon an admin kills early is not a
+ * coupon a family let lapse, so the points come back.
+ */
+async function killCoupon(
+  couponId: string,
+  adminId: string,
+  nextStatus: typeof CouponStatus.VOID | typeof CouponStatus.EXPIRED,
+  actionLabel: string,
+): Promise<CouponDTO> {
+  await dbConnect();
+  const now = new Date();
+
+  const coupon = await withTransaction(async (session) => {
+    const flipped = await Coupon.findOneAndUpdate(
+      { _id: couponId, status: CouponStatus.ACTIVE, expiresAt: { $gt: now } },
+      { $set: { status: nextStatus }, $inc: { ledgerSeq: 1 } },
+      { new: true, session },
+    );
+    if (!flipped) throw await couponStateError(couponId, now);
+
+    await refundCouponPoints(flipped, session, adminId, actionLabel, now);
+    return flipped;
+  });
+
+  return toDTO(coupon, now);
+}
+
+/** Deactivate a coupon: a store will refuse it, and its points are refunded. */
+export function voidCoupon(couponId: string, adminId: string): Promise<CouponDTO> {
+  return killCoupon(couponId, adminId, CouponStatus.VOID, "cancelled");
+}
+
+/** Force a still-valid coupon to expire now, refunding its points. */
+export function adminExpireCoupon(couponId: string, adminId: string): Promise<CouponDTO> {
+  return killCoupon(couponId, adminId, CouponStatus.EXPIRED, "expired");
+}
+
+/**
+ * Bring a deactivated coupon back. If its points were refunded when it was
+ * voided, they are re-debited here so an ACTIVE points coupon always has its
+ * points paid — reactivation is refused when the member has since spent them.
+ * A coupon past its expiry can never be reactivated.
+ */
+export async function reactivateCoupon(couponId: string, adminId: string): Promise<CouponDTO> {
+  await dbConnect();
+  const now = new Date();
+
+  const coupon = await withTransaction(async (session) => {
+    const current = await Coupon.findById(couponId).session(session);
+    if (!current) throw new DomainError("That coupon no longer exists.", 404, "NOT_FOUND");
+    if (current.status !== CouponStatus.VOID) {
+      throw new DomainError("Only a deactivated coupon can be reactivated.", 409, "NOT_VOID");
+    }
+    if (current.expiresAt.getTime() <= now.getTime()) {
+      throw new DomainError(
+        "That coupon's validity window has already passed — it cannot be reactivated.",
+        409,
+        "ALREADY_EXPIRED",
+      );
+    }
+
+    // Gate the flip on status so two concurrent reactivations cannot both
+    // re-debit. A loser matches nothing and is reported as a conflict.
+    const flipped = await Coupon.findOneAndUpdate(
+      { _id: couponId, status: CouponStatus.VOID },
+      { $set: { status: CouponStatus.ACTIVE }, $inc: { ledgerSeq: 1 } },
+      { new: true, session },
+    );
+    if (!flipped) throw new DomainError("That coupon changed state first.", 409, "CONFLICT");
+
+    // Re-charge only a coupon whose points were actually returned.
+    if (flipped.pointsSpent > 0 && flipped.refundedAt) {
+      const pts = flipped.pointsSpent;
+      const wallet = await Wallet.findOne({ user: flipped.user }).session(session);
+      if (!wallet || wallet.totalBalance < pts) {
+        throw new DomainError(
+          "The member has spent the refunded points, so this coupon can't be reactivated. Issue a new one instead.",
+          409,
+          "INSUFFICIENT",
+        );
+      }
+      const plan = planBucketDebit(wallet, pts);
+      const debited = await Wallet.findOneAndUpdate(
+        { _id: wallet._id, totalBalance: { $gte: pts } },
+        {
+          $inc: {
+            totalBalance: -pts,
+            quizBalance: -plan.quiz,
+            referralBalance: -plan.referral,
+            activityBalance: -plan.activity,
+          },
+        },
+        { new: true, session },
+      );
+      if (!debited) {
+        throw new DomainError(
+          "The member has spent the refunded points, so this coupon can't be reactivated. Issue a new one instead.",
+          409,
+          "INSUFFICIENT",
+        );
+      }
+
+      await WalletTransaction.create(
+        [
+          {
+            user: flipped.user,
+            source: PointSource.FUTURE_REDEMPTION,
+            type: TransactionType.DEBIT,
+            points: -pts,
+            balanceAfter: debited.totalBalance,
+            referenceType: "CouponReactivation",
+            referenceId: flipped._id,
+            description: `Coupon ${flipped.code} reactivated by admin — ${pts.toLocaleString("en-IN")} points debited again`,
+            status: TransactionStatus.COMPLETED,
+            idempotencyKey: `coupon-recharge:${flipped.code}:${flipped.ledgerSeq}`,
+            createdBy: adminId,
+            meta: { couponCode: flipped.code, pointsSpent: pts, action: "reactivate" },
+          },
+        ],
+        { session },
+      );
+
+      flipped.refundedAt = null;
+      await flipped.save({ session });
+    }
+
+    return flipped;
+  });
+
+  return toDTO(coupon, now);
+}
+
+/**
+ * Issue a coupon directly to a member from the admin console.
+ *
+ * PROMO mints a free coupon (source ADMIN, zero points) — a gift or a
+ * compensation that creates spendable value the member never paid for. POINTS
+ * spends the member's own points at the live rate, in one transaction, exactly
+ * like self-service issuing: the balance check, the debit and the insert cannot
+ * come apart.
+ */
+export async function adminIssueCoupon(input: AdminIssueCouponInput): Promise<CouponDTO> {
+  await dbConnect();
+  const policy = await getCouponPolicy();
+
+  const member = await User.findById(input.userId).select("_id").lean();
+  if (!member) throw new DomainError("That member no longer exists.", 404, "NO_USER");
+
+  const valueRupees = Math.floor(input.valueRupees);
+  if (!Number.isInteger(valueRupees) || valueRupees < 1) {
+    throw new DomainError("Enter a whole rupee value of at least ₹1.", 400, "INVALID_AMOUNT");
+  }
+
+  const issuedAt = new Date();
+  const expiresAt = new Date(issuedAt.getTime() + policy.validityDays * DAY_MS);
+
+  if (input.mode === "PROMO") {
+    const coupon = await withTransaction(async (session) => {
+      const code = await generateUniqueCouponCode(session);
+      const [created] = await Coupon.create(
+        [
+          {
+            code,
+            user: member._id,
+            valueRupees,
+            pointsSpent: 0,
+            status: CouponStatus.ACTIVE,
+            source: CouponSource.ADMIN,
+            issuedAt,
+            expiresAt,
+          },
+        ],
+        { session },
+      );
+      return created;
+    });
+    return toDTO(coupon, issuedAt);
+  }
+
+  // POINTS mode: value is realised out of the member's balance at the live rate,
+  // so the coupon is worth exactly what was spent (no flooring loss).
+  if (policy.pointsPerRupee <= 0) {
+    throw new DomainError(
+      "The points-per-rupee rate isn't configured. Fix it in settings first.",
+      503,
+      "BAD_RATE",
+    );
+  }
+  const points = valueRupees * policy.pointsPerRupee;
+
+  const coupon = await withTransaction(async (session) => {
+    const wallet = await Wallet.findOne({ user: member._id }).session(session);
+    if (!wallet || wallet.totalBalance < points) {
+      throw new DomainError(
+        `This member holds ${wallet?.totalBalance ?? 0} points — ${points.toLocaleString("en-IN")} are needed for a ₹${valueRupees.toLocaleString("en-IN")} coupon.`,
+        400,
+        "INSUFFICIENT",
+      );
+    }
+
+    const plan = planBucketDebit(wallet, points);
+    const debited = await Wallet.findOneAndUpdate(
+      { _id: wallet._id, totalBalance: { $gte: points } },
+      {
+        $inc: {
+          totalBalance: -points,
+          quizBalance: -plan.quiz,
+          referralBalance: -plan.referral,
+          activityBalance: -plan.activity,
+        },
+      },
+      { new: true, session },
+    );
+    if (!debited) {
+      throw new DomainError("This member no longer has enough points.", 400, "INSUFFICIENT");
+    }
+
+    const code = await generateUniqueCouponCode(session);
+    const [created] = await Coupon.create(
+      [
+        {
+          code,
+          user: member._id,
+          valueRupees,
+          pointsSpent: points,
+          status: CouponStatus.ACTIVE,
+          source: CouponSource.POINTS,
+          issuedAt,
+          expiresAt,
+        },
+      ],
+      { session },
+    );
+
+    await WalletTransaction.create(
+      [
+        {
+          user: member._id,
+          source: PointSource.FUTURE_REDEMPTION,
+          type: TransactionType.DEBIT,
+          points: -points,
+          balanceAfter: debited.totalBalance,
+          referenceType: "Coupon",
+          referenceId: created._id,
+          description: `Coupon ${code} issued by admin — worth ₹${valueRupees.toLocaleString("en-IN")}`,
+          status: TransactionStatus.COMPLETED,
+          idempotencyKey: `coupon:${code}`,
+          createdBy: input.adminId,
+          meta: { couponCode: code, valueRupees, issuedByAdmin: true },
+        },
+      ],
+      { session },
+    );
+
+    return created;
+  });
+
+  return toDTO(coupon, issuedAt);
 }

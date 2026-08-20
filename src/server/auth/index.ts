@@ -16,8 +16,9 @@ import {
 const credsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
-  // Only supplied by the multi-step admin login flow.
-  adminCode: z.string().optional(),
+  // Only supplied by the multi-step admin login flow. Trimmed so a stray space
+  // pasted onto the code is not read as a wrong code.
+  adminCode: z.string().trim().optional(),
   /*
     Device position, sent by the admin login form when the browser granted
     permission. Recorded as a claim about where the sign-in happened — it comes

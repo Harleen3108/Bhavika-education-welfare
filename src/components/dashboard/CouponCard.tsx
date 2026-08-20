@@ -31,6 +31,7 @@ const STATUS: Record<CouponStatus, StatusMeta> = {
   [CouponStatus.ACTIVE]: { en: "Active", hi: "चालू", tone: "success" },
   [CouponStatus.REDEEMED]: { en: "Used", hi: "इस्तेमाल हुआ", tone: "neutral" },
   [CouponStatus.EXPIRED]: { en: "Expired", hi: "समाप्त", tone: "danger" },
+  [CouponStatus.VOID]: { en: "Cancelled", hi: "रद्द", tone: "warning" },
 };
 
 /**
@@ -75,6 +76,8 @@ export function CouponCard({
 
   const meta = STATUS[coupon.status];
   const active = coupon.status === CouponStatus.ACTIVE;
+  // A gift from Bhavika: no points ever left the member's wallet.
+  const promo = coupon.pointsSpent === 0;
   const points = formatPoints(coupon.pointsSpent);
   const issued = formatDate(coupon.issuedAt);
   const expires = formatDate(coupon.expiresAt);
@@ -152,12 +155,21 @@ export function CouponCard({
       </div>
 
       <div className="mt-3 text-sm text-ink-600">
-        <p>
-          Made on {issued} from {points} points.
-        </p>
-        <Hi className="block text-ink-600">
-          {issued} को {points} पॉइंट्स से बना।
-        </Hi>
+        {promo ? (
+          <>
+            <p>Added by Bhavika on {issued}.</p>
+            <Hi className="block text-ink-600">{issued} को भाविका की ओर से मिला।</Hi>
+          </>
+        ) : (
+          <>
+            <p>
+              Made on {issued} from {points} points.
+            </p>
+            <Hi className="block text-ink-600">
+              {issued} को {points} पॉइंट्स से बना।
+            </Hi>
+          </>
+        )}
 
         {active && (
           <>
@@ -165,14 +177,24 @@ export function CouponCard({
             <Hi className="block text-ink-700">{expires} तक चलेगा।</Hi>
             {/* The forfeit, restated on the coupon itself — a member who scrolls
                 straight to their list must meet the same warning as one who
-                just read the confirmation step. */}
-            <p className="mt-1.5 text-brand-700">
-              If it is not used by then it expires, and the {points} points are not returned.
-            </p>
-            <Hi className="block text-brand-700">
-              अगर तब तक इस्तेमाल नहीं हुआ तो कूपन खत्म हो जाएगा, और {points} पॉइंट्स वापस नहीं
-              मिलेंगे।
-            </Hi>
+                just read the confirmation step. A gifted coupon has no points to
+                forfeit, so it only carries the expiry. */}
+            {promo ? (
+              <>
+                <p className="mt-1.5 text-brand-700">If it is not used by then it expires.</p>
+                <Hi className="block text-brand-700">अगर तब तक इस्तेमाल नहीं हुआ तो यह खत्म हो जाएगा।</Hi>
+              </>
+            ) : (
+              <>
+                <p className="mt-1.5 text-brand-700">
+                  If it is not used by then it expires, and the {points} points are not returned.
+                </p>
+                <Hi className="block text-brand-700">
+                  अगर तब तक इस्तेमाल नहीं हुआ तो कूपन खत्म हो जाएगा, और {points} पॉइंट्स वापस नहीं
+                  मिलेंगे।
+                </Hi>
+              </>
+            )}
           </>
         )}
 
@@ -202,8 +224,32 @@ export function CouponCard({
               Expired on {expires} without being used.
             </p>
             <Hi className="block text-ink-700">{expires} को बिना इस्तेमाल के खत्म हो गया।</Hi>
-            <p className="mt-1">The {points} points spent on it were not returned.</p>
-            <Hi className="block text-ink-600">इस पर लगे {points} पॉइंट्स वापस नहीं मिले।</Hi>
+            {coupon.refundedAt ? (
+              <>
+                <p className="mt-1">The {points} points spent on it were refunded to your wallet.</p>
+                <Hi className="block text-ink-600">इस पर लगे {points} पॉइंट्स आपके वॉलेट में वापस कर दिए गए।</Hi>
+              </>
+            ) : (
+              <>
+                <p className="mt-1">The {points} points spent on it were not returned.</p>
+                <Hi className="block text-ink-600">इस पर लगे {points} पॉइंट्स वापस नहीं मिले।</Hi>
+              </>
+            )}
+          </>
+        )}
+
+        {coupon.status === CouponStatus.VOID && (
+          <>
+            <p className="mt-1.5 font-semibold text-ink-800">
+              This coupon was cancelled and can no longer be used.
+            </p>
+            <Hi className="block text-ink-700">यह कूपन रद्द कर दिया गया है और अब इस्तेमाल नहीं होगा।</Hi>
+            {coupon.refundedAt && (
+              <>
+                <p className="mt-1">The {points} points spent on it were refunded to your wallet.</p>
+                <Hi className="block text-ink-600">इस पर लगे {points} पॉइंट्स आपके वॉलेट में वापस कर दिए गए।</Hi>
+              </>
+            )}
           </>
         )}
       </div>

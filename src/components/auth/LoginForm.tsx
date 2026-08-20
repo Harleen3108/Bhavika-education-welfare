@@ -177,7 +177,7 @@ export function LoginForm() {
     const res = await signIn("credentials", {
       email: creds.email,
       password: creds.password,
-      adminCode,
+      adminCode: adminCode.trim(),
       ...(gps ?? {}),
       redirect: false,
     });
@@ -209,7 +209,11 @@ export function LoginForm() {
   // ---- Admin code step ----
   if (creds) {
     return (
-      <form onSubmit={onSubmitCode} className="space-y-5" noValidate>
+      // Distinct key from the credentials form below. Without it React reuses
+      // the same <input> DOM node across the two branches, and reusing this
+      // controlled admin-code input as the uncontrolled email input (or back)
+      // is what throws "changing a controlled input to be uncontrolled".
+      <form key="admin-code-step" onSubmit={onSubmitCode} className="space-y-5" noValidate>
         <div className="flex items-start gap-2 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-700">
           <ShieldCheck size={18} className="mt-0.5 shrink-0" />
           <span>
@@ -231,9 +235,14 @@ export function LoginForm() {
           hintHi="प्रशासकों को दिया गया गुप्त कोड।"
         >
           <Input
+            // Distinct key so React can never reconcile this controlled input
+            // with the uncontrolled email input from the credentials step —
+            // reusing that filled DOM node here is what corrupted the submitted
+            // code and threw the controlled/uncontrolled warning.
+            key="admin-access-code"
             id="adminCode"
             type="password"
-            autoComplete="one-time-code"
+            autoComplete="off"
             autoFocus
             value={adminCode}
             onChange={(e) => setAdminCode(e.target.value)}
@@ -267,7 +276,7 @@ export function LoginForm() {
 
   // ---- Email + password step (everyone) ----
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+    <form key="credentials-step" onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
       {justVerified && !formError && (
         <Alert tone="success">
           Your email is verified. Log in to start earning points.
@@ -287,6 +296,7 @@ export function LoginForm() {
         error={errors.email?.message}
       >
         <Input
+          key="login-email"
           id="email"
           type="email"
           autoComplete="email"

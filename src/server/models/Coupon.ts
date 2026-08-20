@@ -19,14 +19,30 @@ export interface ICoupon {
   user: Types.ObjectId;
   /** Face value in whole rupees. */
   valueRupees: number;
-  /** Points debited to create it. Never returned if the coupon lapses. */
+  /**
+   * Points debited to create it. Zero for an admin-granted (promo) coupon,
+   * which nobody paid points for. Forfeited if a POINTS coupon lapses on the
+   * clock; refunded if an admin voids or force-expires it.
+   */
   pointsSpent: number;
   status: CouponStatus;
   source: CouponSource;
   issuedAt: Date;
-  /** After this instant the coupon is dead and the points are forfeited. */
+  /** After this instant the coupon is dead. */
   expiresAt: Date;
   redeemedAt?: Date | null;
+  /**
+   * When an admin returned the `pointsSpent` to the member (on a void or a
+   * force-expire). Null while the points are still spent. Cleared again if a
+   * voided coupon is reactivated and the points are re-debited.
+   */
+  refundedAt?: Date | null;
+  /**
+   * Monotonic counter of money-moving admin actions on this coupon. Every
+   * refund and re-debit ledger row is keyed on it, so repeated
+   * void→reactivate cycles cannot collide on one idempotency key.
+   */
+  ledgerSeq: number;
   /** The partner store's order id, recorded when they redeem it. */
   externalRef?: string | null;
   createdAt: Date;
@@ -38,7 +54,8 @@ const CouponSchema = new Schema<ICoupon>(
     code: { type: String, required: true, uppercase: true, trim: true },
     user: { type: Schema.Types.ObjectId, ref: "User", required: true },
     valueRupees: { type: Number, required: true, min: 1 },
-    pointsSpent: { type: Number, required: true, min: 1 },
+    // min 0: an admin-granted promo coupon costs the member no points.
+    pointsSpent: { type: Number, required: true, min: 0 },
     status: {
       type: String,
       enum: Object.values(CouponStatus),
@@ -54,6 +71,8 @@ const CouponSchema = new Schema<ICoupon>(
     issuedAt: { type: Date, required: true, default: Date.now },
     expiresAt: { type: Date, required: true },
     redeemedAt: { type: Date, default: null },
+    refundedAt: { type: Date, default: null },
+    ledgerSeq: { type: Number, required: true, default: 0 },
     externalRef: { type: String, default: null },
   },
   { timestamps: true },

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { dbConnect } from "@/server/db/connect";
 import { User } from "@/server/models";
-import { userStatusSchema } from "@/lib/validation/admin";
+import { userStatusSchema, userRedemptionSchema } from "@/lib/validation/admin";
 import { logAdminAction } from "@/server/services/audit.service";
 import { runAdmin, type ActionResult } from "./util";
 
@@ -54,6 +54,31 @@ export async function setUserStatus(input: unknown): Promise<ActionResult> {
       targetType: "User",
       targetId: userId,
       reason: `${status}${reason ? ` — ${reason}` : ""}`,
+    });
+    revalidatePath("/admin/users");
+    revalidatePath(`/admin/users/${userId}`);
+  });
+}
+
+/**
+ * Turn a single member's coupon generation on or off.
+ *
+ * Sits on top of the global redemption switch: this only ever tightens, never
+ * loosens — a blocked member cannot redeem even while redemption is enabled
+ * platform-wide. `issueCoupon` re-reads this flag on every attempt, so the
+ * block takes effect immediately for in-flight sessions too.
+ */
+export async function setUserRedemption(input: unknown): Promise<ActionResult> {
+  return runAdmin(async (admin) => {
+    const { userId, blocked, reason } = userRedemptionSchema.parse(input);
+    await dbConnect();
+    const res = await User.updateOne({ _id: userId }, { $set: { redemptionBlocked: blocked } });
+    if (res.matchedCount === 0) throw new Error("That member no longer exists.");
+
+    await logAdminAction(admin.id, "user.redemption", {
+      targetType: "User",
+      targetId: userId,
+      reason: `${blocked ? "Redemption blocked" : "Redemption allowed"}${reason ? ` — ${reason}` : ""}`,
     });
     revalidatePath("/admin/users");
     revalidatePath(`/admin/users/${userId}`);

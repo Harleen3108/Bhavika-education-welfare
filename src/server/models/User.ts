@@ -23,6 +23,14 @@ export interface IUser {
   bio?: string;
   profileCompleted: boolean;
 
+  /**
+   * Per-member override on top of the global redemption switch. When true this
+   * member cannot convert points into coupons even while redemption is enabled
+   * platform-wide — the lever for freezing one suspected-fraud account without
+   * closing the door on everyone.
+   */
+  redemptionBlocked: boolean;
+
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -63,6 +71,7 @@ const UserSchema = new Schema<IUser>(
     avatarUrl: { type: String, trim: true },
     bio: { type: String, trim: true, maxlength: 400 },
     profileCompleted: { type: Boolean, default: false },
+    redemptionBlocked: { type: Boolean, default: false },
 
     lastLoginAt: { type: Date },
   },

@@ -402,6 +402,7 @@ export async function adminGetUserDetail(userId: string) {
     role: user.role,
     status: user.status,
     emailVerified: Boolean(user.emailVerified),
+    redemptionBlocked: Boolean(user.redemptionBlocked),
     phone: user.phone ?? "",
     city: user.city ?? "",
     referralCode: user.referralCode,
@@ -587,6 +588,8 @@ export type AdminCouponRow = {
   issuedAt: string;
   expiresAt: string;
   redeemedAt: string | null;
+  /** Set when an admin refunded the points on a void or force-expire. */
+  refundedAt: string | null;
   /** The partner store's order id — only ever set on a redeemed coupon. */
   externalRef: string | null;
   /** Whole days before forfeit. 0 once redeemed or expired. */
@@ -611,8 +614,15 @@ export type AdminCouponTotals = {
   redeemedRupees: number;
   expiredCount: number;
   expiredRupees: number;
-  /** Points spent on coupons that lapsed unused. Never refunded, by decision. */
+  /**
+   * Points spent on coupons that lapsed unused AND were not refunded. An
+   * admin-forced expiry refunds the points, so it is excluded here — otherwise
+   * the forfeit figure would double-count money that went back to the member.
+   */
   forfeitedPoints: number;
+  /** Admin-deactivated coupons — off the liability, points already returned. */
+  voidedCount: number;
+  voidedRupees: number;
 };
 
 export type AdminCouponFilters = {
@@ -643,6 +653,8 @@ type CouponTotalsAgg = {
   expiredCount: number;
   expiredRupees: number;
   forfeitedPoints: number;
+  voidedCount: number;
+  voidedRupees: number;
 };
 
 const ZERO_COUPON_TOTALS: AdminCouponTotals = {
@@ -654,6 +666,8 @@ const ZERO_COUPON_TOTALS: AdminCouponTotals = {
   expiredCount: 0,
   expiredRupees: 0,
   forfeitedPoints: 0,
+  voidedCount: 0,
+  voidedRupees: 0,
 };
 
 const DAY_MS = 86_400_000;
@@ -679,6 +693,8 @@ function couponStatusFilter(status: string, now: Date): Record<string, unknown> 
       ],
     };
   }
+  // VOID is a stored status the clock never touches — an admin set it.
+  if (status === CouponStatus.VOID) return { status: CouponStatus.VOID };
   return null;
 }
 
@@ -750,6 +766,10 @@ export async function adminListCoupons(opts: AdminCouponFilters): Promise<AdminC
       { $and: [{ $eq: ["$status", CouponStatus.ACTIVE] }, { $lte: ["$expiresAt", now] }] },
     ],
   };
+  const isVoid = { $eq: ["$status", CouponStatus.VOID] };
+  // Forfeited = lapsed AND never refunded. An admin-forced expiry returns the
+  // points, so those must not be counted as forfeited.
+  const isForfeited = { $and: [isExpired, { $eq: ["$refundedAt", null] }] };
 
   const [docs, total, sums] = await Promise.all([
     Coupon.find(filter)
@@ -770,7 +790,9 @@ export async function adminListCoupons(opts: AdminCouponFilters): Promise<AdminC
           redeemedRupees: { $sum: { $cond: [isRedeemed, "$valueRupees", 0] } },
           expiredCount: { $sum: { $cond: [isExpired, 1, 0] } },
           expiredRupees: { $sum: { $cond: [isExpired, "$valueRupees", 0] } },
-          forfeitedPoints: { $sum: { $cond: [isExpired, "$pointsSpent", 0] } },
+          forfeitedPoints: { $sum: { $cond: [isForfeited, "$pointsSpent", 0] } },
+          voidedCount: { $sum: { $cond: [isVoid, 1, 0] } },
+          voidedRupees: { $sum: { $cond: [isVoid, "$valueRupees", 0] } },
         },
       },
     ]),
@@ -796,6 +818,8 @@ export async function adminListCoupons(opts: AdminCouponFilters): Promise<AdminC
         expiredCount: agg.expiredCount,
         expiredRupees: agg.expiredRupees,
         forfeitedPoints: agg.forfeitedPoints,
+        voidedCount: agg.voidedCount,
+        voidedRupees: agg.voidedRupees,
       }
     : ZERO_COUPON_TOTALS;
 
@@ -817,6 +841,7 @@ export async function adminListCoupons(opts: AdminCouponFilters): Promise<AdminC
         issuedAt: c.issuedAt.toISOString(),
         expiresAt: c.expiresAt.toISOString(),
         redeemedAt: c.redeemedAt ? c.redeemedAt.toISOString() : null,
+        refundedAt: c.refundedAt ? c.refundedAt.toISOString() : null,
         externalRef: c.externalRef ?? null,
         daysRemaining:
           effective === CouponStatus.ACTIVE

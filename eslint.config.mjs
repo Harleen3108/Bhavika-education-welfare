@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Sibling projects nested in this repo — they carry their own tooling and
+    // must not be linted as part of the web app.
+    "Bhavika-education-welfare-main/**",
+    "mobile/**",
   ]),
 ]);
 

@@ -2,14 +2,24 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Ban, CheckCircle2, Coins, MailCheck, PauseCircle } from "lucide-react";
+import {
+  Ban,
+  CheckCircle2,
+  Coins,
+  Lock,
+  MailCheck,
+  PauseCircle,
+  TicketPlus,
+  Unlock,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Textarea, Label } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { Alert } from "@/components/ui/States";
 import { WalletAdjustForm, type AdjustMember } from "@/components/admin/WalletAdjustForm";
-import { setUserStatus, verifyUserEmail } from "@/server/actions/users";
+import { IssueCouponForm } from "@/components/admin/IssueCouponForm";
+import { setUserStatus, setUserRedemption, verifyUserEmail } from "@/server/actions/users";
 import { AccountStatus } from "@/lib/enums";
 
 type Status = (typeof AccountStatus)[keyof typeof AccountStatus];
@@ -34,16 +44,20 @@ export function UserActions({
   userId,
   status,
   emailVerified,
+  redemptionBlocked,
   member,
 }: {
   userId: string;
   status: string;
   emailVerified: boolean;
+  redemptionBlocked: boolean;
   member: AdjustMember;
 }) {
   const router = useRouter();
   const [pendingStatus, setPendingStatus] = React.useState<Status | null>(null);
   const [adjustOpen, setAdjustOpen] = React.useState(false);
+  const [issueOpen, setIssueOpen] = React.useState(false);
+  const [redemptionOpen, setRedemptionOpen] = React.useState(false);
   const [verifying, setVerifying] = React.useState(false);
 
   /*
@@ -99,6 +113,17 @@ export function UserActions({
       <Button size="sm" variant="subtle" onClick={() => setAdjustOpen(true)}>
         <Coins size={16} /> Adjust points
       </Button>
+      <Button size="sm" variant="subtle" onClick={() => setIssueOpen(true)}>
+        <TicketPlus size={16} /> Issue coupon
+      </Button>
+      <Button
+        size="sm"
+        variant={redemptionBlocked ? "secondary" : "outline"}
+        onClick={() => setRedemptionOpen(true)}
+      >
+        {redemptionBlocked ? <Unlock size={16} /> : <Lock size={16} />}
+        {redemptionBlocked ? "Allow redemption" : "Block redemption"}
+      </Button>
 
       <StatusModal
         userId={userId}
@@ -114,7 +139,114 @@ export function UserActions({
       >
         <WalletAdjustForm member={member} />
       </Modal>
+
+      <Modal
+        open={issueOpen}
+        onClose={() => setIssueOpen(false)}
+        title={`Issue a coupon to ${member.name}`}
+      >
+        <IssueCouponForm member={member} onIssued={() => setIssueOpen(false)} />
+      </Modal>
+
+      <RedemptionModal
+        userId={userId}
+        memberName={member.name}
+        blocked={redemptionBlocked}
+        open={redemptionOpen}
+        onClose={() => setRedemptionOpen(false)}
+        onDone={() => router.refresh()}
+      />
     </div>
+  );
+}
+
+/**
+ * Turn one member's coupon generation on or off. Blocking is the fraud lever;
+ * it sits on top of the global switch and never loosens it.
+ */
+function RedemptionModal({
+  userId,
+  memberName,
+  blocked,
+  open,
+  onClose,
+  onDone,
+}: {
+  userId: string;
+  memberName: string;
+  blocked: boolean;
+  open: boolean;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [reason, setReason] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const willBlock = !blocked;
+
+  const close = () => {
+    if (busy) return;
+    setReason("");
+    onClose();
+  };
+
+  const confirm = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await setUserRedemption({ userId, blocked: willBlock, reason: reason.trim() });
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(
+        willBlock ? "Redemption blocked for this member." : "Redemption allowed for this member.",
+      );
+      setReason("");
+      onClose();
+      onDone();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={close}
+      title={willBlock ? "Block coupon generation" : "Allow coupon generation"}
+    >
+      <div className="space-y-4">
+        <Alert tone={willBlock ? "danger" : "info"}>
+          {willBlock
+            ? `${memberName} will not be able to turn points into coupons, even while redemption is enabled site-wide. Their points and existing coupons are untouched.`
+            : `${memberName} will be able to generate coupons again, subject to the global redemption switch.`}
+        </Alert>
+        <div>
+          <Label htmlFor="redemption-reason">Reason</Label>
+          <Textarea
+            id="redemption-reason"
+            value={reason}
+            maxLength={300}
+            placeholder="Optional — recorded in the admin audit log."
+            onChange={(e) => setReason(e.target.value)}
+            className="min-h-20"
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="subtle" onClick={close} type="button">
+            Cancel
+          </Button>
+          <Button
+            variant={willBlock ? "danger" : "primary"}
+            onClick={confirm}
+            loading={busy}
+            type="button"
+          >
+            {willBlock ? "Block redemption" : "Allow redemption"}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
