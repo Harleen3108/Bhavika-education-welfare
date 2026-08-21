@@ -41,8 +41,7 @@ export function Navbar() {
       )}
     >
       <nav className="container-page flex h-16 items-center justify-between gap-3 lg:h-20">
-        {/* Badge only — the same circular emblem used for the browser tab. */}
-        <Logo showText={false} size={52} />
+        <Logo />
 
         {/*
           Desktop nav — xl, not lg. The logo, eight bilingual links and two CTAs
