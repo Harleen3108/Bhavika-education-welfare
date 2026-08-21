@@ -189,7 +189,7 @@ export default async function AdminUserDetailPage({
                     This member has not invited anyone yet.
                   </p>
                 ) : (
-                  <ul className="rounded-xl border border-ink-200 [&>li+li]:border-t [&>li+li]:border-ink-100">
+                  <ul className="divide-y divide-ink-100 rounded-xl ring-1 ring-inset ring-ink-200">
                     {user.referrals.map((r) => (
                       <li
                         key={r.id}

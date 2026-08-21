@@ -448,7 +448,7 @@ export default async function HomePage() {
                       className="group flex h-full flex-col overflow-hidden"
                     >
                       {art && (
-                        <div className="relative aspect-16/9 shrink-0 overflow-hidden bg-ink-100">
+                        <div className="relative aspect-video shrink-0 overflow-hidden bg-ink-100">
                           <Image
                             src={art.url}
                             alt={art.alt}
@@ -689,11 +689,14 @@ export default async function HomePage() {
                 </div>
 
                 <ul className="divide-y divide-ink-100">
-                  {leaderRows.map((r) => {
+                  {leaderRows.map((r, i) => {
                     const medal = ["🥇", "🥈", "🥉"][r.rank - 1];
                     return (
                       <li
-                        key={r.rank}
+                        // Index, not rank: ties share a rank, so rank is not
+                        // unique. This list is display-only and never reordered
+                        // on the client, so the position is a stable identity.
+                        key={i}
                         className="flex items-center gap-3 px-5 py-3.5 sm:gap-4"
                       >
                         <span
@@ -906,7 +909,7 @@ export default async function HomePage() {
                     key={c.en}
                     className="flex shrink-0 snap-start items-center gap-2"
                   >
-                    <div className="flex min-w-[8.5rem] items-center gap-2.5 rounded-xl px-2 py-1.5">
+                    <div className="flex min-w-34 items-center gap-2.5 rounded-xl px-2 py-1.5">
                       <span
                         aria-hidden
                         className={
@@ -1111,7 +1114,7 @@ export default async function HomePage() {
               {testimonialsPreview.map((t) => (
                 <li
                   key={t.id}
-                  className="w-full md:w-[calc((100%_-_1.5rem)/2)] lg:w-[calc((100%_-_3rem)/3)]"
+                  className="w-full md:w-[calc((100%-1.5rem)/2)] lg:w-[calc((100%-3rem)/3)]"
                 >
                   <TestimonialCard t={t} />
                 </li>
@@ -1198,7 +1201,7 @@ export default async function HomePage() {
             {faqs.data.map((f) => (
               <details
                 key={f.q}
-                className="group rounded-2xl border border-ink-200 bg-surface px-5 py-1 open:border-brand-300 open:bg-brand-50/30"
+                className="group rounded-2xl border px-5 py-1 not-open:border-ink-200 not-open:bg-surface open:border-brand-300 open:bg-brand-50/30"
               >
                 <summary className="flex cursor-pointer list-none items-start justify-between gap-4 py-4 font-semibold text-ink-900 marker:content-none">
                   <span>

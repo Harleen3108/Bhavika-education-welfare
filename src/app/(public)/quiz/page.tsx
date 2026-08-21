@@ -176,10 +176,10 @@ export default function QuizPage() {
 
             <Card className="overflow-hidden">
               <ul className="divide-y divide-ink-100">
-                {LEADERBOARD_PREVIEW.map((r) => {
+                {LEADERBOARD_PREVIEW.map((r, i) => {
                   const medal = ["🥇", "🥈", "🥉"][r.rank - 1];
                   return (
-                    <li key={r.rank} className="flex items-center gap-4 px-5 py-3.5">
+                    <li key={i} className="flex items-center gap-4 px-5 py-3.5">
                       <span
                         aria-hidden
                         className={
