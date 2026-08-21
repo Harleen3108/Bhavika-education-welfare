@@ -22,6 +22,7 @@ export { UserActivityReward, type IUserActivityReward } from "./UserActivityRewa
 export { AdminAuditLog, type IAdminAuditLog } from "./AdminAuditLog";
 export { SystemSettings, type ISystemSettings } from "./SystemSettings";
 export { Coupon, type ICoupon } from "./Coupon";
+export { IdCard, type IIdCard } from "./IdCard";
 export {
   IntegrationTransaction,
   type IIntegrationTransaction,

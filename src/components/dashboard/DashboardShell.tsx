@@ -23,6 +23,7 @@ import {
   Settings,
   ShieldAlert,
   Home,
+  IdCard,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { LogoutButton } from "@/components/auth/LogoutButton";
@@ -35,6 +36,7 @@ const ICONS: Record<string, React.ElementType> = {
   "/dashboard/referrals": Gift,
   "/dashboard/leaderboard": Medal,
   "/dashboard/benefits": Gift,
+  "/dashboard/id-card": IdCard,
   "/dashboard/profile": UserRound,
   "/admin": LayoutDashboard,
   "/admin/content": FileText,
@@ -44,6 +46,7 @@ const ICONS: Record<string, React.ElementType> = {
   "/admin/partners": Handshake,
   "/admin/quizzes": Trophy,
   "/admin/users": Users,
+  "/admin/id-cards": IdCard,
   "/admin/wallet": WalletIcon,
   "/admin/referrals": Gift,
   "/admin/contacts": Mail,

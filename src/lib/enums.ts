@@ -109,6 +109,13 @@ export const CouponSource = {
 } as const;
 export type CouponSource = (typeof CouponSource)[keyof typeof CouponSource];
 
+export const IdCardStatus = {
+  PENDING: "PENDING", // member submitted KYC, awaiting admin review
+  APPROVED: "APPROVED", // verified — card is downloadable and in the member's profile
+  REJECTED: "REJECTED", // admin declined; member may correct and resubmit
+} as const;
+export type IdCardStatus = (typeof IdCardStatus)[keyof typeof IdCardStatus];
+
 export const IntegrationStatus = {
   INITIATED: "INITIATED",
   VERIFIED: "VERIFIED",

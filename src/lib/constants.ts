@@ -65,6 +65,7 @@ export const USER_NAV = [
   { label: "Referrals", href: "/dashboard/referrals" },
   { label: "Leaderboard", href: "/dashboard/leaderboard" },
   { label: "Rewards", href: "/dashboard/benefits" },
+  { label: "ID Card", href: "/dashboard/id-card" },
   { label: "Profile", href: "/dashboard/profile" },
 ] as const;
 
@@ -77,6 +78,7 @@ export const ADMIN_NAV = [
   { label: "Partners", href: "/admin/partners" },
   { label: "Quizzes", href: "/admin/quizzes" },
   { label: "Users", href: "/admin/users" },
+  { label: "ID Cards", href: "/admin/id-cards" },
   { label: "Wallet", href: "/admin/wallet" },
   // Sits beside Wallet: an issued coupon is points that have already left a
   // wallet, so the two pages are read together when money is being reconciled.

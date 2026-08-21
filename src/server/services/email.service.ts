@@ -299,6 +299,51 @@ export async function sendVerificationEmail(
   });
 }
 
+export async function sendIdCardApprovedEmail(
+  to: string,
+  name: string,
+  memberId: string,
+  url: string,
+): Promise<SendResult> {
+  const safeName = escapeHtml(name);
+  const safeId = escapeHtml(memberId);
+  return send({
+    to,
+    name,
+    subject: `Your ${SITE.shortName} ID card is ready`,
+    debug: [
+      { label: "Member ID", value: memberId },
+      { label: "ID card URL", value: url },
+    ],
+    html: shell({
+      preheader: `Your ID card has been approved. Member ID ${memberId}.`,
+      title: `Your ID card is ready, ${safeName}!`,
+      titleHi: `${safeName}, आपका पहचान पत्र तैयार है!`,
+      bodyHtml: `
+        ${para(
+          `Your details have been verified and your ${SITE.name} member ID card has been approved. Your member ID is <strong>${safeId}</strong>.`,
+          `आपकी जानकारी सत्यापित हो गई है और आपका सदस्य पहचान पत्र स्वीकृत हो गया है। आपका सदस्य आईडी है <strong>${safeId}</strong>।`,
+        )}
+        ${para(
+          `You can view and download it any time from your dashboard.`,
+          `आप इसे कभी भी अपने डैशबोर्ड से देख और डाउनलोड कर सकते हैं।`,
+        )}
+        ${ctaButton("View my ID card", "मेरा पहचान पत्र देखें", url)}
+        <p style="margin:20px 0 0;font-family:${FONT};font-size:12px;line-height:1.6;color:${C.inkFaint};word-break:break-all">
+          Button not working? Paste this link into your browser:<br /><a href="${url}" style="color:${C.coralDeep}">${url}</a>
+        </p>`,
+    }),
+    text: [
+      `Your ${SITE.name} ID card is ready, ${name}!`,
+      ``,
+      `Your member ID is: ${memberId}`,
+      ``,
+      `View and download it here:`,
+      url,
+    ].join("\n"),
+  });
+}
+
 export async function sendPasswordResetEmail(
   to: string,
   name: string,

@@ -29,10 +29,12 @@
     "next": "16.3.0",
     "next-auth": "^5.0.0-beta.32",
     "next-cloudinary": "^6.18.8",
+    "pdf-lib": "^1.17.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-hook-form": "^7.85.0",
     "resend": "^6.19.0",
+    "sharp": "^0.35.3",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
