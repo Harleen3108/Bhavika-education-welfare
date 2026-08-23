@@ -82,8 +82,14 @@ const IdCardSchema = new Schema<IIdCard>(
 
 // One card per member — the whole feature is "unique ID per user".
 IdCardSchema.index({ user: 1 }, { unique: true });
-// The card number is unique when present; PENDING cards have none yet.
-IdCardSchema.index({ memberId: 1 }, { unique: true, sparse: true });
+// The card number is unique when present. A PARTIAL (not sparse) index: pending
+// cards carry `memberId: null`, and a sparse unique index would treat every one
+// of those nulls as the same value and collide — the partial filter indexes
+// only real (string) card numbers, so uniqueness applies just to issued cards.
+IdCardSchema.index(
+  { memberId: 1 },
+  { unique: true, partialFilterExpression: { memberId: { $type: "string" } } },
+);
 // The admin review queue: newest requests in a given status first.
 IdCardSchema.index({ status: 1, createdAt: -1 });
 
