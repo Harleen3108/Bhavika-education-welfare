@@ -49,6 +49,13 @@ const schema = z.object({
     .optional()
     .transform((v) => v === "true"),
 
+  // Razorpay (donations). key_id is safe to expose to the client; the secret and
+  // webhook secret are server-only. All optional so the app runs without them —
+  // the donate button reports "not configured" until they are set.
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+
   // Seeding
   SEED_ADMIN_EMAIL: z.string().optional(),
   SEED_ADMIN_PASSWORD: z.string().optional(),
@@ -75,6 +82,9 @@ export const cloudinaryConfigured = Boolean(
 
 /** True when any transactional email provider is usable. */
 export const emailConfigured = Boolean(env.BREVO_API_KEY || env.RESEND_API_KEY);
+
+/** True when Razorpay is fully configured and donations can be taken. */
+export const razorpayConfigured = Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET);
 
 export const emailProvider: "brevo" | "resend" | "console" = env.BREVO_API_KEY
   ? "brevo"

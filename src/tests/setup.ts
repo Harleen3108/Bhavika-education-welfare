@@ -20,6 +20,10 @@ afterAll(async () => {
 (process.env as Record<string, string>).NODE_ENV = "test";
 process.env.MONGODB_DB_NAME = "test";
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || "test-secret-please-change-1234567890";
+// Only the secret (not the key id), so signature verification can be exercised
+// while `razorpayConfigured` stays false — no test ever hits the real API.
+process.env.RAZORPAY_KEY_SECRET =
+  process.env.RAZORPAY_KEY_SECRET || "test_rzp_secret_please_change_1234567890";
 
 // Start a single-node replica set so Mongo transactions work in tests.
 const replset = await MongoMemoryReplSet.create({ replSet: { count: 1 } });

@@ -109,6 +109,25 @@ export const CouponSource = {
 } as const;
 export type CouponSource = (typeof CouponSource)[keyof typeof CouponSource];
 
+export const DonationStatus = {
+  CREATED: "CREATED", // order placed, payment not yet confirmed
+  PAID: "PAID", // payment captured / manually recorded — receipt available
+  FAILED: "FAILED", // payment abandoned or failed
+} as const;
+export type DonationStatus = (typeof DonationStatus)[keyof typeof DonationStatus];
+
+export const DonationKind = {
+  DONATION: "DONATION", // a monetary gift
+  VOLUNTEER: "VOLUNTEER", // an admin-issued certificate of volunteering (no money)
+} as const;
+export type DonationKind = (typeof DonationKind)[keyof typeof DonationKind];
+
+export const DonationSource = {
+  ONLINE: "ONLINE", // paid through Razorpay
+  MANUAL: "MANUAL", // recorded by an admin (cash/offline, or a volunteer certificate)
+} as const;
+export type DonationSource = (typeof DonationSource)[keyof typeof DonationSource];
+
 export const IdCardStatus = {
   PENDING: "PENDING", // member submitted KYC, awaiting admin review
   APPROVED: "APPROVED", // verified — card is downloadable and in the member's profile

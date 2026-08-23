@@ -23,6 +23,8 @@ export { AdminAuditLog, type IAdminAuditLog } from "./AdminAuditLog";
 export { SystemSettings, type ISystemSettings } from "./SystemSettings";
 export { Coupon, type ICoupon } from "./Coupon";
 export { IdCard, type IIdCard } from "./IdCard";
+export { Donation, type IDonation } from "./Donation";
+export { DonationCategory, type IDonationCategory } from "./DonationCategory";
 export {
   IntegrationTransaction,
   type IIntegrationTransaction,

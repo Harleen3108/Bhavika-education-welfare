@@ -344,6 +344,59 @@ export async function sendIdCardApprovedEmail(
   });
 }
 
+export async function sendDonationReceiptEmail(
+  to: string,
+  name: string,
+  info: { receiptNo: string; amount: number; cause: string; kind: string; url: string },
+): Promise<SendResult> {
+  const safeName = escapeHtml(name);
+  const safeCause = escapeHtml(info.cause);
+  const isVolunteer = info.kind === "VOLUNTEER";
+  const amountLine = `₹${info.amount.toLocaleString("en-IN")}`;
+  return send({
+    to,
+    name,
+    subject: isVolunteer
+      ? `Your ${SITE.shortName} volunteer certificate`
+      : `Thank you — your ${SITE.shortName} donation receipt (${info.receiptNo})`,
+    debug: [
+      { label: "Receipt No", value: info.receiptNo },
+      { label: "Certificate URL", value: info.url },
+    ],
+    html: shell({
+      preheader: isVolunteer
+        ? `Your volunteer certificate is ready. Ref ${info.receiptNo}.`
+        : `Your donation of ${amountLine} is received. Receipt ${info.receiptNo}.`,
+      title: isVolunteer ? `Thank you, ${safeName}!` : `Thank you for your donation, ${safeName}!`,
+      titleHi: `धन्यवाद, ${safeName}!`,
+      bodyHtml: `
+        ${para(
+          isVolunteer
+            ? `Thank you for volunteering with ${SITE.name} towards <strong>${safeCause}</strong>. Your certificate of appreciation is ready.`
+            : `We have received your generous donation of <strong>${amountLine}</strong> towards <strong>${safeCause}</strong>. Your receipt number is <strong>${escapeHtml(info.receiptNo)}</strong>.`,
+          isVolunteer
+            ? `${SITE.name} के साथ <strong>${safeCause}</strong> के लिए स्वेच्छा से समय देने के लिए धन्यवाद। आपका प्रमाण पत्र तैयार है।`
+            : `<strong>${safeCause}</strong> के लिए आपके <strong>${amountLine}</strong> के उदार दान के लिए धन्यवाद। आपकी रसीद संख्या है <strong>${escapeHtml(info.receiptNo)}</strong>।`,
+        )}
+        ${ctaButton(isVolunteer ? "Download certificate" : "Download receipt", "डाउनलोड करें", info.url)}
+        <p style="margin:20px 0 0;font-family:${FONT};font-size:12px;line-height:1.6;color:${C.inkFaint};word-break:break-all">
+          Or paste this link into your browser:<br /><a href="${info.url}" style="color:${C.coralDeep}">${info.url}</a>
+        </p>`,
+    }),
+    text: [
+      isVolunteer
+        ? `Thank you for volunteering with ${SITE.name}, ${name}!`
+        : `Thank you for your donation to ${SITE.name}, ${name}!`,
+      ``,
+      isVolunteer ? `Cause: ${info.cause}` : `Amount: ${amountLine} towards ${info.cause}`,
+      `Receipt No: ${info.receiptNo}`,
+      ``,
+      `Download your ${isVolunteer ? "certificate" : "receipt"}:`,
+      info.url,
+    ].join("\n"),
+  });
+}
+
 export async function sendPasswordResetEmail(
   to: string,
   name: string,

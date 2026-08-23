@@ -24,6 +24,7 @@ import { Card, CardBody } from "@/components/ui/Card";
 import { BiHeading, Hi } from "@/components/ui/Bilingual";
 import { TestimonialCard, PartnerChip } from "@/components/public/Cards";
 import { HeroQuizCard } from "@/components/home/HeroQuizCard";
+import { DonationSection } from "@/components/donate/DonationSection";
 import { ContactForm } from "@/components/public/ContactForm";
 import { icon } from "@/components/home/icon-map";
 import { CountUp, Parallax, Reveal, StaggerGroup, TiltCard } from "@/components/motion";
@@ -300,6 +301,9 @@ export default async function HomePage() {
           </div>
         </Container>
       </section>
+
+      {/* ═══════════════════════════════ Donate ═════════════════════════════ */}
+      <DonationSection />
 
       {/* ══════════════════════════ Mission / Vision / Values ═══════════════ */}
       <Section>
