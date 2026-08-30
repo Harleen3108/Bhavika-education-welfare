@@ -13,19 +13,62 @@ Status key — `[ ]` not decided · `[x]` decided, answer recorded below it
 
 ## A. Blocking Phase 2 development
 
-### A1. One repository or two?
+### A1. One repository or two? — **DECIDED**
 
-`[ ]` **Separate application** (recommended) · `[ ]` **Second surface inside this repo**
+`[x]` **Second surface inside this repository.** Same GitHub repo.
 
-Decides the database, the deployment, the auth model and the integration
-method. Expensive to reverse once either has real data.
+**Reasoning.** The same person owns and commissions both platforms, and it is
+one small team. Splitting would mean rebuilding auth, OTP, the admin shell,
+Cloudinary upload, Brevo email, PDF generation, audit logging, rate limiting
+and the design system — 28 working services — to buy a boundary that is not
+really being maintained anyway. The two platforms are already publicly linked
+by design: Bhavika's homepage advertises the Jai Maa Durga discount, so a
+separate repository would not have undone that association.
 
-The recommendation and the trade-off table are in
-`docs/PHASE_2_JAI_MAA_DURGA_BRIEF.md` §1. Short version: Phase 1 is a
-children's charity platform, Phase 2 handles money, EMI and commissions.
-Keeping them apart means a payments incident cannot become an NGO incident.
+*(An earlier draft of the Phase 2 brief recommended separate applications on
+blast-radius grounds. That recommendation is withdrawn — the reputational
+argument behind it does not hold when the funnel between the two platforms is
+the product.)*
 
-**Decision:**
+**Four conditions that make this safe. Treat them as requirements:**
+
+1. **Separate Mongo database.** Same Atlas cluster, different `dbName`. Costs
+   nothing, keeps the data separable, and stops a commerce migration reaching
+   quiz or donor collections.
+2. **Separate route groups.** `(public)` stays Bhavika; add `(store)` for Jai
+   Maa Durga, with its own layout and navigation.
+3. **Commerce code must not import NGO services directly.** Go through the
+   coupon contract even in-process. While that boundary holds, splitting later
+   is a weekend's work; once it rots, it is never.
+4. **Keep the suite green.** 124 tests are the safety net for exactly this kind
+   of merge.
+
+---
+
+### A1b. One member login or two? — **DECIDED**
+
+`[x]` **Two separate member accounts, bridged by the coupon code.**
+
+A Bhavika member and a Jai Maa Durga member are different accounts. This
+matches how the platform is actually used: the **child** plays the quiz, the
+**parent** shops. The coupon is printable and shareable precisely so it can
+cross between two people.
+
+**What this means for the build:**
+
+- Jai Maa Durga gets its **own** member model with Member ID, Sponsor ID,
+  membership tier and the seven wallets. Do **not** extend Bhavika's `User`
+  with commerce fields.
+- Bhavika's `User`, `Wallet` and quiz logic stay untouched.
+- The only link between the two is the coupon code, through the contract in
+  `docs/JAI_MAA_DURGA_INTEGRATION.md`. Because both live in one repository the
+  developer *may* call the coupon service in-process rather than over signed
+  HTTP — but the call must go through the same service functions
+  (`validateCoupon`, `redeemCoupon`), so the exactly-once and expiry guarantees
+  still apply.
+
+If the client later wants a parent to link a child's account, that is an
+additive feature, not a schema change.
 
 ---
 

@@ -22,31 +22,42 @@ Two corrections to any earlier brief you may have been given:
 **Jai Maa Durga** — an e-commerce platform with membership, multi-wallet
 accounting, coupons, lucky draw, recharge, EMI, PIN and a sponsor tree.
 
-**A decision you must make in week one, with the client, before any code:**
+### Two structural decisions are already made — do not reopen them
 
-> Is Jai Maa Durga a **separate application**, or a **second surface inside this
-> repository**?
+**1. It lives in THIS repository, as a second surface.**
 
-This is not a style question. It changes the database, the deployment, the auth
-model and the integration. Both are defensible:
+Not a separate application. The same person owns both platforms, it is one
+small team, and splitting would mean rebuilding 28 working services — auth,
+OTP, admin shell, Cloudinary, Brevo, PDF, audit, rate limiting, the design
+system — to buy a boundary nobody would be maintaining.
 
-| | Separate app + shared contract | Same repo, second surface |
-|---|---|---|
-| Data | Own database. Two user tables. | One database. One `User`, role-scoped. |
-| Integration | The signed HTTP contract in `docs/JAI_MAA_DURGA_INTEGRATION.md` | Direct service calls |
-| Blast radius | An e-commerce bug cannot touch a child's quiz points | A migration mistake can |
-| Cost | Two deployments, duplicated auth/admin/upload plumbing | One deployment, reuse everything |
-| Honest risk | More work up front | Phase 1 is a **charity platform for children**; Phase 2 handles **money, EMI and commissions**. Coupling them means a payments incident becomes an NGO incident. |
+Four conditions make this safe. **Treat them as requirements, not advice:**
 
-**Recommendation: separate application, integrating over the existing signed
-contract.** The seam is already built, documented and tested. Bhavika stays a
-foundation; Jai Maa Durga stays a shop. Reuse Phase 1 by *copying proven
-patterns* (§5), not by sharing a database.
+1. **Separate Mongo database.** Same Atlas cluster, different `dbName`. Free,
+   and it stops a commerce migration ever reaching quiz or donor collections.
+2. **Separate route groups.** `(public)` stays Bhavika; add `(store)` for Jai
+   Maa Durga with its own layout and navigation.
+3. **Commerce code must not import NGO services directly.** Go through the
+   coupon service functions even in-process. While that boundary holds,
+   splitting the two later is a weekend; once it rots, it is never.
+4. **Keep the suite green.** 124 tests are the safety net for this merge.
 
-If the client chooses one repo, say so explicitly in your Step-2 report and
-plan the `User` model migration deliberately — do not drift into it.
+**2. A Bhavika member and a Jai Maa Durga member are SEPARATE accounts.**
 
----
+Bridged only by the coupon code. This matches real use: the **child** plays the
+quiz, the **parent** shops — the coupon is printable and shareable precisely so
+it can cross between two people.
+
+So Jai Maa Durga gets its **own** member model — Member ID, Sponsor ID,
+membership tier, the seven wallets. **Do not add commerce fields to Bhavika's
+`User`.** Bhavika's `User`, `Wallet` and quiz logic stay untouched.
+
+Because both live in one repository you *may* call the coupon service directly
+rather than over signed HTTP — but the call must go through the same functions
+(`validateCoupon`, `redeemCoupon`) so the exactly-once and expiry guarantees
+still hold. The contract in `docs/JAI_MAA_DURGA_INTEGRATION.md` remains the
+specification of behaviour either way, and is what an Android client or a future
+split would use.
 
 ## 2. The audit is already done — here is the answer
 
