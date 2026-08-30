@@ -14,7 +14,8 @@ with the reasoning. They are proposals, not decisions.
 | Status | Meaning |
 |---|---|
 | **`FINAL`** | Settled. Do not reopen. |
-| **`PROPOSED`** | **Recommended by the DEVELOPER, not agreed by the CLIENT.** Must be confirmed by the client in writing before it is built. |
+| **`PROPOSED`** | Recommended by the development side. Not yet reviewed by anyone. |
+| **`DEV-CONFIRMED`** | **Chosen by the DEVELOPER, still NOT signed off by the CLIENT.** Safe to build against, but the client must double-check it before launch. |
 | **`OPEN`** | No recommendation possible without information only the client has. |
 | **`LEGAL`** | Not an engineering question. Needs a professional, not a developer. |
 
@@ -26,6 +27,35 @@ question — but it has **not** been agreed by the client. Do not treat a
 **To confirm an item:** the client changes `PROPOSED` to
 `CONFIRMED BY CLIENT — <name>, <date>`, edits the answer if they disagree, and
 commits. Until then, a developer building on it is building at risk.
+
+---
+
+## At a glance
+
+| # | Decision | Status | Needs |
+|---|---|---|---|
+| A1 | Same repository | **FINAL** | — |
+| A1b | Separate member accounts | DEV-CONFIRMED | Client double-check |
+| A2 | Recharge provider | RESOLVED | Client supplies API after the project |
+| A3 | Commission + referral model | DEV-CONFIRMED | Client to confirm the numbers |
+| A4 | EMI winner handling | DEV-CONFIRMED | Client double-check |
+| A5 | PIN powers | DEV-CONFIRMED | Client double-check |
+| A6 | Jewellery rounding + GST | PROPOSED | Client, and their **CA** for GST |
+| A7 | Point pools stay separate | PROPOSED | Client double-check |
+| B1 | Coupon expiry scheduler | PROPOSED | Go-ahead to build (~30 min) |
+| B2 | Redemption switch | OPEN | Turn on when the store is live |
+| B3 | Integration secrets | OPEN | Client to issue |
+| B4 | Razorpay test keys | OPEN | Client to provide |
+| B5 | Email-failure honesty fix | PROPOSED | Go-ahead (~15 min) |
+| B6 | One-click auto-login | PROPOSED | Go-ahead (~30–40 min) |
+| C1 | Lucky draw legality | **LEGAL** | Lawyer |
+| C2 | PIN + sponsor tree legality | **LEGAL** | Lawyer — **do this first** |
+| C3 | 80G on receipts | **LEGAL** | CA / client |
+
+**Nothing here is signed off by the client yet.** `DEV-CONFIRMED` means the
+development side has chosen a sensible default so work can proceed — it is not
+the client's agreement, and every one of them should be walked through with the
+client before launch.
 
 ---
 
@@ -67,13 +97,13 @@ the product.)*
 
 ---
 
-### A1b. One member login or two? — `PROPOSED`
+### A1b. One member login or two? — `DEV-CONFIRMED`
 
 **Recommendation: two separate member accounts, bridged by the coupon code.**
 
-> **Client must confirm.** Unlike A1 this *is* visible to users — it decides
-> whether a parent signs up once or twice — so it is the client's call, not the
-> developer's.
+> **Chosen by the developer. The client must double-check this one.** Unlike A1
+> it *is* visible to users — it decides whether a parent signs up once or twice
+> — so the client should agree to it explicitly before launch.
 
 A Bhavika member and a Jai Maa Durga member are different accounts. This
 matches how the platform is actually used: the **child** plays the quiz, the
@@ -140,7 +170,32 @@ it log loudly.
 
 ---
 
-### A3. Commission rates and membership benefits — `PROPOSED`
+### A3. Commission rates and membership benefits — `DEV-CONFIRMED`
+
+> **Chosen by the developer. The client must still double-check the numbers.**
+>
+> **Recharge commission — a share of what we actually receive.**
+> Free = 40% of provider payout capped at ₹2 · Area = 60% · Chief = 80%.
+> All three admin-editable. The cap is what stops the ₹2 promise costing more
+> than the recharge earns.
+>
+> **Referral income — one level, product sales only, and admin-editable.**
+>
+> Careful with "admin-editable" here, because it is not all equally safe:
+>
+> | Setting | Admin may change | Why |
+> |---|---|---|
+> | Referral **percentage** | ✅ Yes | An ordinary business number |
+> | Minimum order for Paid membership | ✅ Yes | An ordinary business number |
+> | Pay on **enrolment** as well as sales | ⚠️ **Not without legal clearance** | This is the switch that turns lawful direct selling into what the 1978 Act prohibits |
+> | Tree **depth** beyond one level | ⚠️ **Not without legal clearance** | Same reason |
+>
+> **Build the percentage as a normal setting. Do NOT ship a UI toggle that
+> silently enables enrolment-based or multi-level payouts.** If the client wants
+> those later, they arrive with the lawyer's answer to C2 — not through a
+> settings screen an admin can flip on a Tuesday.
+
+
 
 **⚠️ The most financially dangerous item on this page.** The spec says a Free
 member earns **₹2 fixed** per recharge. Taken literally that loses money:
@@ -187,7 +242,12 @@ if they want more.
 
 ---
 
-### A4. EMI + lucky draw collision — `PROPOSED`
+### A4. EMI + lucky draw collision — `DEV-CONFIRMED`
+
+> **Chosen by the developer. Client must double-check.**
+> **Winner keeps the product, remaining EMI stops, prize awarded on top.**
+> Paid instalments are not refunded, sponsor commission already paid stands.
+> Schedule closes as `WON`, not `CANCELLED`.
 
 If an EMI customer wins the draw: remaining EMI stops, product is "cancelled",
 prize awarded. That leaves a product delivered, partly paid, now cancelled, and
@@ -212,7 +272,13 @@ refund flows, reverse logistics and stock restoration.
 
 ---
 
-### A5. PIN system — scope of "mini admin power" — `PROPOSED`
+### A5. PIN system — scope of "mini admin power" — `DEV-CONFIRMED`
+
+> **Chosen by the developer. Client must double-check.**
+> **Exactly two powers:** activate a member under their own sponsor ID, and
+> view their own direct downline (name, join date, activation status). Nothing
+> else. Implemented as a capability on the member record, never as an admin
+> role — put it in the admin role system and someone widens it by accident.
 
 A ₹1,00,000 PIN grants "limited mini admin power". **Privilege must be
 enumerated, never left open-ended** — this is the single most dangerous phrase
