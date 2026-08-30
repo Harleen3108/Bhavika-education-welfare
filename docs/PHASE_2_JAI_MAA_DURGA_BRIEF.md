@@ -331,3 +331,9 @@ Before writing feature code, send the client:
 5. **Open questions on business rules** the brief leaves ambiguous — commission
    tiers, EMI-winner accounting, jewellery rounding, PIN permissions. Get these
    answered in writing before building them.
+
+> **`docs/OPEN_DECISIONS.md` already lists every one of these**, with the ones
+> that block you marked as such. Read it before starting a module. It also
+> carries three items the owner must confirm with a lawyer — lucky draw, and
+> the PIN + sponsor-tree commission model in particular — because the answers
+> change what you build, not just whether it launches.
