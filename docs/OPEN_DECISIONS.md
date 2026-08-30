@@ -1,21 +1,43 @@
-# Open decisions — awaiting the owner's confirmation
+# Open decisions — recommendations awaiting the client's confirmation
 
 Everything here is **blocked on a decision, not on engineering effort**. Each
-item is something a developer would otherwise have to guess at, and a wrong
-guess is expensive to unwind once data exists.
+item is something a developer would otherwise guess at, and a wrong guess is
+expensive to unwind once real data exists.
 
-**How to use this:** tick the box, write the answer inline, commit. The
-developer reads this file before building the module it belongs to.
+Every open item now carries a **recommended answer** from the development side,
+with the reasoning. They are proposals, not decisions.
 
-Status key — `[ ]` not decided · `[x]` decided, answer recorded below it
+---
+
+## ⚠️ Who confirmed what — read this before building
+
+| Status | Meaning |
+|---|---|
+| **`FINAL`** | Settled. Do not reopen. |
+| **`PROPOSED`** | **Recommended by the DEVELOPER, not agreed by the CLIENT.** Must be confirmed by the client in writing before it is built. |
+| **`OPEN`** | No recommendation possible without information only the client has. |
+| **`LEGAL`** | Not an engineering question. Needs a professional, not a developer. |
+
+**Anything marked `PROPOSED` is the development team's opinion.** It is written
+here so the client has something concrete to react to instead of an open
+question — but it has **not** been agreed by the client. Do not treat a
+`PROPOSED` item as a signed-off requirement.
+
+**To confirm an item:** the client changes `PROPOSED` to
+`CONFIRMED BY CLIENT — <name>, <date>`, edits the answer if they disagree, and
+commits. Until then, a developer building on it is building at risk.
 
 ---
 
 ## A. Blocking Phase 2 development
 
-### A1. One repository or two? — **DECIDED**
+### A1. One repository or two? — `FINAL`
 
-`[x]` **Second surface inside this repository.** Same GitHub repo.
+**Second surface inside this repository. Same GitHub repo.**
+
+> **This one is final and does not need client sign-off.** It is an engineering
+> decision about how the code is organised, it does not change any feature the
+> client sees, and it is reversible later if the four conditions below are kept.
 
 **Reasoning.** The same person owns and commissions both platforms, and it is
 one small team. Splitting would mean rebuilding auth, OTP, the admin shell,
@@ -45,9 +67,13 @@ the product.)*
 
 ---
 
-### A1b. One member login or two? — **DECIDED**
+### A1b. One member login or two? — `PROPOSED`
 
-`[x]` **Two separate member accounts, bridged by the coupon code.**
+**Recommendation: two separate member accounts, bridged by the coupon code.**
+
+> **Client must confirm.** Unlike A1 this *is* visible to users — it decides
+> whether a parent signs up once or twice — so it is the client's call, not the
+> developer's.
 
 A Bhavika member and a Jai Maa Durga member are different accounts. This
 matches how the platform is actually used: the **child** plays the quiz, the
@@ -72,118 +98,214 @@ additive feature, not a schema change.
 
 ---
 
-### A2. Recharge provider
+### A2. Recharge provider — `RESOLVED — client supplies the API later`
 
-`[ ]` Confirmed · Provider: ____________________
+**The client already has, or will obtain, a recharge API and will hand it over
+after the project.** This is therefore no longer a blocker.
 
-Mobile, DTH, FASTag, electricity, gas and water recharge cannot be built
-without a licensed aggregator. This is a **commercial and compliance step with
-lead time**, not a coding task:
+**What the developer builds now:** everything except the provider call.
 
-- A BBPS-authorised biller aggregator or an equivalent commercial API
-- KYC and company documentation
-- A signed commercial agreement including the commission slabs
+- Service catalogue (mobile, DTH, FASTag, electricity, gas, water)
+- Operator and plan browsing
+- The recharge wallet and its ledger
+- The commission engine (see A3)
+- Order/transaction records with a **status machine**
+- Reconciliation for pending and failed recharges
 
-Until this exists, the developer can build the recharge **architecture** —
-service catalogue, wallet, commission engine, reconciliation — but not a
-working recharge. The client brief already says *"do not create fake production
-recharge logic."* Agreed: a stub that appears to succeed will be mistaken for
-working software and shipped.
+**How to build the provider seam:** one interface, one adapter.
 
-**Who is arranging this, and by when?**
+```
+interface RechargeProvider {
+  fetchOperators(service)      // may be static until the API arrives
+  fetchPlans(operator, circle)
+  submitRecharge(request)      // returns SUCCESS | PENDING | FAILED
+  checkStatus(providerRef)     // reconciliation for PENDING
+}
+```
+
+Ship a `MockRechargeProvider` behind a config flag for development. When the
+client provides the real API, only the adapter is written — nothing else moves.
+
+**Two hard rules, because this is where recharge platforms lose money:**
+
+1. **Recharge is asynchronous.** Providers return `PENDING` and settle minutes
+   or hours later. Design reconciliation from day one; do not treat the first
+   response as final.
+2. **Commission is credited on confirmed success only** — never on submission.
+   A `PENDING` that later fails must reverse cleanly, and the reversal must be
+   a ledger entry, not an edit.
+
+The mock must never be shippable to production. Gate it on `NODE_ENV` and make
+it log loudly.
 
 ---
 
-### A3. Commission rates and membership benefits
+### A3. Commission rates and membership benefits — `PROPOSED`
 
-`[ ]` Confirmed
+**⚠️ The most financially dangerous item on this page.** The spec says a Free
+member earns **₹2 fixed** per recharge. Taken literally that loses money:
 
-The brief gives two numbers — ₹2 fixed for a Free member, "full commission per
-plan" for a Paid member. Needed before the commission engine is built:
+> An aggregator typically pays **1–4%** of the recharge value. On a ₹10 mobile
+> recharge you receive roughly **₹0.10–0.40** and would pay out **₹2**. Every
+> small recharge is a loss, and small recharges are the most common kind.
 
-| Question | Answer |
+**Recommendation — commission is always a share of what we actually receive:**
+
+| Tier | Recommended commission | Why |
+|---|---|---|
+| Free | **40% of provider payout, capped at ₹2** | Honours the "₹2" promise without ever paying out more than was earned |
+| Area | **60% of provider payout** | |
+| Chief | **80% of provider payout** | |
+
+All three admin-configurable. **Never a flat amount that can exceed revenue.**
+If the client insists on a true flat ₹2, add a minimum recharge value (₹100+)
+below which no commission is paid — otherwise this is an arbitrage anyone can
+run in a loop.
+
+**Becoming a Paid member — recommendation:** a configurable **minimum order
+value** (suggest ₹2,000 to start), not "any purchase". Otherwise a ₹50 grocery
+order grants full commission rights permanently.
+
+**Referral income — recommendation, and please read C2 first:**
+
+- **Direct sponsor only. One level. No deep tree payouts.**
+- Paid **only on product sales**, as a percentage of margin — **never on
+  enrolment or on PIN purchase**.
+
+That single rule is the clearest line between lawful direct selling and a
+money-circulation scheme. Multi-level payouts on enrolment are exactly what the
+1978 Act prohibits. Build one level; the client can seek legal clearance later
+if they want more.
+
+**Client must supply the actual launch numbers:**
+
+| | Answer |
 |---|---|
-| Commission per service, per tier (Free / Area / Chief) | |
-| What exactly makes someone a Paid member — any purchase, or a qualifying product/amount? | |
-| Referral income: how much, to whom, at what depth of the sponsor tree? | |
-| Is referral income paid on enrolment, or only on product sales? *(see C2 — this one matters legally)* | |
-
-All of it will be admin-configurable, but the **launch defaults** must be real
-numbers the client stands behind.
+| Provider commission share per tier | |
+| Minimum order value for Paid membership | |
+| Referral % on product sales | |
 
 ---
 
-### A4. EMI + lucky draw collision
+### A4. EMI + lucky draw collision — `PROPOSED`
 
-`[ ]` Confirmed
+If an EMI customer wins the draw: remaining EMI stops, product is "cancelled",
+prize awarded. That leaves a product delivered, partly paid, now cancelled, and
+a prize on top. The accounting must be defined before it is coded.
 
-The brief says: if an EMI customer wins the lucky draw, remaining EMI stops,
-the product is cancelled, and they get the prize.
+**Recommendation — the simplest version that is generous and auditable:**
 
-That leaves a product delivered, partly paid, now cancelled, plus a prize
-awarded. The accounting has to be defined **before** it is coded:
+| Question | Recommended answer |
+|---|---|
+| Does the winner keep the product? | **Yes.** Taking back a delivered product from a prize winner is a support nightmare and reads as a trick. |
+| Remaining instalments? | **Cancelled.** Schedule closed as `WON`, not `CANCELLED` — the distinction matters in reports. |
+| Instalments already paid? | **Not refunded.** They paid toward a product they keep. Refunding *and* gifting the product *and* awarding a prize is three benefits for one win. |
+| Sponsor commission already paid? | **Stands.** Clawing back a sponsor's earned commission because someone else won is unfair and will cause disputes. |
+| The prize itself? | Awarded separately, tracked on the draw record, not on the order. |
 
-- Are instalments already paid refunded, kept, or credited to a wallet?
-- Does the customer keep the product **and** the prize, or return the product?
-- What happens to commission already paid to their sponsor on those instalments?
+Net effect: the winner stops paying, keeps the product, and receives the prize.
+Easy to explain in one sentence — which is the real test.
 
-**Decision:**
-
----
-
-### A5. PIN system — scope of "mini admin power"
-
-`[ ]` Confirmed
-
-A ₹1,00,000 PIN grants "limited mini admin power" and the ability to activate
-members. **Privilege escalation must be enumerated, never left open-ended.**
-
-- Exactly which actions may a PIN holder perform?
-- Can they see other members' data? Whose?
-- Can they adjust any balance? (Strong recommendation: **no**.)
-- Discount percentage, coupon multiplier and commission — exact launch figures?
-
-**Decision:**
+**Client must confirm.** If they instead want the product returned and
+instalments refunded, say so now: it is a materially different build with
+refund flows, reverse logistics and stock restoration.
 
 ---
 
-### A6. Jewellery pricing and rounding
+### A5. PIN system — scope of "mini admin power" — `PROPOSED`
 
-`[ ]` Confirmed
+A ₹1,00,000 PIN grants "limited mini admin power". **Privilege must be
+enumerated, never left open-ended** — this is the single most dangerous phrase
+in the whole client brief.
+
+**Recommendation — a PIN holder may do exactly two things:**
+
+1. **Activate a member under their own sponsor ID.** Every activation writes an
+   audit row naming the PIN, the holder and the new member.
+2. **See their own direct downline** — name, join date, activation status,
+   nothing else.
+
+**And explicitly may NOT:**
+
+- ❌ Adjust any wallet, point or coupon balance — **ever**
+- ❌ See another member's contact details, orders or balances
+- ❌ Reach the admin panel, or any admin API
+- ❌ Change prices, plans, membership tiers or commission
+- ❌ Act on anyone outside their own downline
+
+They are not an admin. They are a member with one extra button. Implement it as
+a **capability on the member**, not as an admin role — if it goes in the admin
+role system, someone will widen it later by accident.
+
+**Recommended launch figures — all admin-configurable:**
+
+| | Recommended |
+|---|---|
+| Product discount | 20% (as the brief says), capped by category — jewellery at 20% may be below cost |
+| Coupon multiplier | 2× |
+| Commission | Chief-tier rate |
+| Validity | 12 months, then benefits lapse |
+
+**Please read C2 before confirming.** A ₹1,00,000 payment that grants the right
+to enrol members and earn from them is the exact structure the money-circulation
+rules describe. Pairing it with **A3's one-level, sales-only referral rule** is
+what keeps it defensible.
+
+---
+
+### A6. Jewellery pricing and rounding — `PROPOSED`
 
 `metal rate × weight + making + stone + GST` produces fractional paise on
-almost every item.
+nearly every item.
 
-- Rounding rule — nearest rupee, always up, or banker's rounding?
-- Where does rounding happen — per line, or once on the order total?
-- Who updates the daily gold and silver rates: admin by hand, or a price feed?
-- GST rate per category, and is it inclusive or added at checkout?
+**Recommendation:**
 
-**Decision:**
+| Question | Recommended answer |
+|---|---|
+| Internal arithmetic | **Integer paise throughout.** Never floats for money — `0.1 + 0.2 !== 0.3`, and jewellery has enough multiplication to make that visible. |
+| Where to round | **Once, on the line total, after GST.** Rounding each component compounds the error and stops the shown breakdown adding up. |
+| Rounding rule | **Nearest rupee, half up.** Predictable and matches what customers expect on an Indian invoice. |
+| Daily gold/silver rate | **Admin enters it, with the timestamp shown to the customer** ("Gold rate as on 20 Aug, 10:00"). A live feed is a later upgrade, not a launch requirement. |
+| Rate changes mid-order | **Price is locked when the item enters the cart**, for a configurable window (suggest 30 minutes), then re-quoted. Never re-price silently at checkout. |
+| Breakdown visibility | **Always shown before payment** — metal, weight, making, stone, GST, total. Jewellery buyers expect it and its absence reads as hiding something. |
+
+**GST — confirm with the client's CA, not with a developer.** Indian jewellery
+GST is generally understood as **3% on metal value** and **5% on making
+charges**, but treatment varies with invoicing and is not something this
+document should assert. Build it as a configurable per-category rate with
+separate metal and making components so whatever the CA says can be entered.
 
 ---
 
-### A7. Point conversion rate on the Jai Maa Durga side
+### A7. Point conversion on the Jai Maa Durga side — `PROPOSED`
 
-`[ ]` Confirmed
+Bhavika's economics are live and settled: **10 points = ₹1**, minimum 5,000, in
+steps of 500, coupon valid 90 days, unused coupons forfeited.
 
-Bhavika's economics are already set and live: **10 points = ₹1**, minimum
-5,000 points, in steps of 500, coupon valid 90 days, and an unused coupon is
-forfeited without a refund.
+**Recommendation: keep the two point pools strictly separate.**
 
-- Does Jai Maa Durga use the same rate for its own points?
-- Its own separate rate?
-- Do the two point pools ever mix, or stay strictly separate?
+| | Recommended |
+|---|---|
+| Do the pools mix? | **No. Never.** |
+| Bhavika points | Convert to a **coupon** only — already built, already live |
+| Jai Maa Durga product points | Their **own** balance, own admin-set conversion rate |
+| Same rate? | Start at 10 points = ₹1 for familiarity, but keep it a **separate setting** so it can diverge |
 
-**Decision:**
+**Why "never mix" matters beyond tidiness.** If a child's quiz points could flow
+into a commerce balance that earns commission, then quiz activity becomes a way
+to generate commission-earning value — which drags the NGO into the regulatory
+question in C2 that it currently sits well outside of. The coupon is a
+deliberate one-way valve: it carries value into the shop and nothing comes back.
+
+Keep it that way.
 
 ---
 
 ## B. Phase 1 — open items
 
-### B1. Nobody schedules coupon expiry
+### B1. Nobody schedules coupon expiry — `PROPOSED`
 
-`[ ]` Done
+**Recommendation: schedule it before the first coupons reach 90 days.** ~30 min.
 
 `expireCoupons()` exists and is tested, but **nothing calls it** — no cron, no
 route, no `vercel.json`. Verified again today.
@@ -198,9 +320,9 @@ minutes of work — say the word.
 
 ---
 
-### B2. Redemption is switched off
+### B2. Redemption is switched off — `OPEN`
 
-`[ ]` Ready to enable
+**Recommendation: leave it off until the store can accept a coupon.** Turning it on earlier traps a family into spending points on a code with a 90-day clock and nowhere to use it.
 
 `SystemSettings.integration.redemptionEnabled = false`. Deliberate: issuing
 coupons before Jai Maa Durga can accept them traps a family into spending
@@ -210,9 +332,9 @@ Turn it on at `/admin/settings` → Redemption **only once the store is live**.
 
 ---
 
-### B3. Jai Maa Durga integration secrets
+### B3. Jai Maa Durga integration secrets — `OPEN`
 
-`[ ]` Issued
+**Recommendation:** generate with real entropy, share out of band — not over email or WhatsApp.
 
 `JMD_INTEGRATION_URL` and `JMD_INTEGRATION_SECRET` are unset. The Phase 2
 developer needs both. Generate the secret with real entropy and share it
@@ -220,9 +342,9 @@ through something other than email or WhatsApp.
 
 ---
 
-### B4. Razorpay keys are missing locally
+### B4. Razorpay keys are missing locally — `OPEN`
 
-`[ ]` Provided
+**Recommendation:** add the **test** keys now so donations can be exercised; live keys only at launch.
 
 `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` are absent
 from `.env.local`. The app boots — donations simply report "not configured" —
@@ -230,9 +352,9 @@ but the donation flow cannot be tested until test keys are added.
 
 ---
 
-### B5. The app claims an email was sent when it was not
+### B5. The app claims an email was sent when it was not — `PROPOSED`
 
-`[ ]` Fix approved
+**Recommendation: fix it.** ~15 min. Without it you are blind to every future delivery failure, exactly as you were to the sender misconfiguration.
 
 If Brevo fails, registration still tells the member *"we've emailed you a
 code."* The failure is logged server-side and the member sees nothing.
@@ -246,9 +368,9 @@ again.
 
 ---
 
-### B6. One-click auto-login after verification
+### B6. One-click auto-login after verification — `PROPOSED`
 
-`[ ]` Wanted
+**Recommendation: worth doing, but only properly.** ~30–40 min with tests. Current behaviour (login with the email pre-filled) is safe and acceptable if you would rather not spend the risk budget here.
 
 Today, verifying redirects to login with the email pre-filled — one password
 entry. True zero-click needs a single-use handoff token whose subject is read
@@ -266,9 +388,7 @@ produced one.
 specific regulatory shape in India, and it is far cheaper to confirm now than
 after launch. Raising them so nobody is surprised later.
 
-### C1. Lucky draw
-
-`[ ]` Confirmed with counsel
+### C1. Lucky draw — `LEGAL`
 
 Prize draws and lotteries are **state-regulated in India**, and rules differ by
 state. A flow of *buy a product → receive a coupon → enter a draw → win a
@@ -280,9 +400,7 @@ whether skill vs chance matters, and what disclosures the draw terms need.
 
 ---
 
-### C2. PIN system + sponsor tree + referral income
-
-`[ ]` Confirmed with counsel
+### C2. PIN system + sponsor tree + referral income — `LEGAL`
 
 **The most important item on this page.**
 
@@ -309,9 +427,7 @@ Rebuilding a commission engine after launch means restating everyone's earnings.
 
 ---
 
-### C3. Donation receipts and 80G
-
-`[ ]` Confirmed
+### C3. Donation receipts and 80G — `LEGAL`
 
 The current certificate is correctly worded — "Certificate of Donation" and
 "Certificate of Appreciation", with **no tax-deduction claim**. That is the
