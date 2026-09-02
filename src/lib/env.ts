@@ -49,6 +49,11 @@ const schema = z.object({
     .optional()
     .transform((v) => v === "true"),
 
+  // Secret that authorises the scheduled jobs under /api/cron/*. Vercel Cron
+  // sends it as `Authorization: Bearer <CRON_SECRET>`. Without it the cron
+  // endpoints refuse every caller, so they can never be triggered publicly.
+  CRON_SECRET: z.string().optional(),
+
   // Razorpay (donations). key_id is safe to expose to the client; the secret and
   // webhook secret are server-only. All optional so the app runs without them —
   // the donate button reports "not configured" until they are set.

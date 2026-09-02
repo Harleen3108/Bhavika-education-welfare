@@ -24,6 +24,7 @@ process.env.AUTH_SECRET = process.env.AUTH_SECRET || "test-secret-please-change-
 // while `razorpayConfigured` stays false — no test ever hits the real API.
 process.env.RAZORPAY_KEY_SECRET =
   process.env.RAZORPAY_KEY_SECRET || "test_rzp_secret_please_change_1234567890";
+process.env.CRON_SECRET = process.env.CRON_SECRET || "test_cron_secret_1234567890";
 
 // Start a single-node replica set so Mongo transactions work in tests.
 const replset = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
